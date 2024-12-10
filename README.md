@@ -12,11 +12,11 @@
 
 
 
-<div align=center><img width="960" height="960" src="./assets/teaser_fig1_b.png"/></div>
+<div align=center><img width="960" height="540" src="./assets/teaser_fig1_b.png"/></div>
  __Versatile generation ability of UniScene.__ (a) Large-scale coherent generation of semantic occupancy, LiDAR point clouds, and multi-view videos. (b) Controllable generation of geometry-edited occupancy, video, and LiDAR by simply editing the input BEV layouts to convey user commands. (c) Controllable generation of attribute-diverse videos by changing the input text prompts.
 
 
-<div align=center><img width="960" height="960" src="./assets/demo.gif"/></div>
+<div align=center><img width="960" height="540" src="./assets/demo.gif"/></div>
 
 
 ### Framework:
