@@ -12,8 +12,8 @@
 
 
 
-<div align=center><img width="960" height="470" src="./assets/teaser_fig1_b.png"/></div>
- Versatile generation ability of UniScene. 
+<!-- <div align=center><img width="960" height="470" src="./assets/teaser_fig1_b.png"/></div>
+ Versatile generation ability of UniScene.  -->
 
 
 <div align=center><img width="960" height="540" src="./assets/demo.gif"/></div>
