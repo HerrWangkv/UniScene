@@ -7,7 +7,7 @@
 
 
 ## Demo:
-<div align=center><img width="960" height="230" src="./assets/teaser_fig1.png"/></div>
+<div align=center><img width="960" height="220" src="./assets/teaser_fig1.png"/></div>
 (a) Overview of UniScene. Given BEV layouts, UniScene facilitates versatile data generation, including semantic occupancy, multi-view video, and LiDAR point clouds, through an occupancy-centric hierarchical modeling approach. (b) Performance comparison on different generation tasks. UniScene delivers substantial improvements over SOTA methods in video, LiDAR, and occupancy generation.
 
 
@@ -15,6 +15,7 @@
 <!-- <div align=center><img width="960" height="470" src="./assets/teaser_fig1_b.png"/></div>
  Versatile generation ability of UniScene.  -->
 
+<br>
 
 <div align=center><img width="960" height="540" src="./assets/demo.gif"/></div>
 
