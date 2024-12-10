@@ -7,23 +7,20 @@
 
 
 ### Demo:
-<div align=center><img width="640" height="180" src="./assets/teaser_fig1.png"/></div>
+<div align=center><img width="960" height="270" src="./assets/teaser_fig1.png"/></div>
 (a) **Overview of UniScene.** Given BEV layouts, UniScene facilitates versatile data generation, including semantic occupancy, multi-view video, and LiDAR point clouds, through an occupancy-centric hierarchical modeling approach. (b) **Performance comparison on different generation tasks.** UniScene delivers substantial improvements over SOTA methods in video, LiDAR, and occupancy generation.
 
 
 
-<div align=center><img width="640" height="360" src="./assets/teaser_fig1_b.png"/></div>
-**Versatile generation ability of UniScene.** (a) Large-scale coherent generation of semantic occupancy, LiDAR point clouds, and multi-view videos. (b) Controllable generation of geometry-edited occupancy, video, and LiDAR by simply editing the input BEV layouts to convey user commands. (c) Controllable generation of attribute-diverse videos by changing the input text prompts.
+<div align=center><img width="960" height="960" src="./assets/teaser_fig1_b.png"/></div>
+ __Versatile generation ability of UniScene.__ (a) Large-scale coherent generation of semantic occupancy, LiDAR point clouds, and multi-view videos. (b) Controllable generation of geometry-edited occupancy, video, and LiDAR by simply editing the input BEV layouts to convey user commands. (c) Controllable generation of attribute-diverse videos by changing the input text prompts.
 
 
-<video width="640" height="360" controls>
-  <source src="./assets/Demo_UniScene.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+<div align=center><img width="960" height="960" src="./assets/demo.gif"/></div>
 
 
 ### Framework:
-<div align=center><img width="640" height="180" src="./assets/overall.png"/></div>
+<div align=center><img width="960" height="270" src="./assets/overall.png"/></div>
 
 
 ### Abstract:
