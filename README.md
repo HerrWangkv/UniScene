@@ -50,9 +50,9 @@ If you find our paper and code useful for your research, please consider citing:
 ```bibtex
 
 @article{li2024uniscene,
-    title={UniScene: Unified Occupancy-centric Driving Scene Generation},
-    author={Li, Bohan and Guo, Jiazhe and Liu, Hongsi and Zou, Yingshuang and Ding, Yikang and Chen, Xiwu and Zhu, Hu and Tan, Feiyang and Zhang, Chi and Wang, Tiancai and Zhou, Shuchang and Zhang, Li and Qi, Xiaojuan and Zhao, Hao and Yang, Mu and Zeng, Wenjun and Jin, Xin},
-    year={2024},
-    journal={arXiv preprint arXiv:2412.05435},
+  title={UniScene: Unified Occupancy-centric Driving Scene Generation},
+  author={Li, Bohan and Guo, Jiazhe and Liu, Hongsi and Zou, Yingshuang and Ding, Yikang and Chen, Xiwu and Zhu, Hu and Tan, Feiyang and Zhang, Chi and Wang, Tiancai and others},
+  journal={arXiv preprint arXiv:2412.05435},
+  year={2024}
 }
 ```
