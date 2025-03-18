@@ -9,27 +9,19 @@
 # MAE: https://github.com/facebookresearch/mae/blob/main/models_mae.py
 # --------------------------------------------------------
 
+############
+import math
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-import math
-from timm.models.vision_transformer import PatchEmbed, Attention, Mlp
+from einops import rearrange
+from timm.models.vision_transformer import Attention, Mlp, PatchEmbed
 
-
-from .bev_cod import BEV_condition_net,BEV_concat_net,BEV_concat_net_s
-from diffusion.embedder import get_embedder
+from .bev_cod import BEV_concat_net_s, BEV_condition_net
 
 # from bev_cod import BEV_condition_net,BEV_concat_net
 # from embedder import get_embedder
-
-############
-import logging
-
-import torch.nn.functional as F
-from einops import rearrange, repeat
-
-
-
 
 
 XYZ_MIN = [-200, -300, -20]
@@ -37,21 +29,16 @@ XYZ_RANGE = [350, 650, 80]
 
 
 def normalizer(mode, data):
-    if mode == 'cxyz' or mode == 'all-xyz':
+    if mode == "cxyz" or mode == "all-xyz":
         # data in format of (N, 4, 3):
-        mins = torch.as_tensor(
-            XYZ_MIN, dtype=data.dtype, device=data.device)[None, None]
-        divider = torch.as_tensor(
-            XYZ_RANGE, dtype=data.dtype, device=data.device)[None, None]
+        mins = torch.as_tensor(XYZ_MIN, dtype=data.dtype, device=data.device)[None, None]
+        divider = torch.as_tensor(XYZ_RANGE, dtype=data.dtype, device=data.device)[None, None]
         data = (data - mins) / divider
-    elif mode == 'owhr':
+    elif mode == "owhr":
         raise NotImplementedError(f"wait for implementation on {mode}")
     else:
         raise NotImplementedError(f"not support {mode}")
     return data
-
-
-
 
 
 def modulate(x, shift, scale):
@@ -62,10 +49,10 @@ def modulate(x, shift, scale):
 #               Embedding Layers for Timesteps and Class Labels                 #
 #################################################################################
 
+
 class TimestepEmbedder(nn.Module):
-    """
-    Embeds scalar timesteps into vector representations.
-    """
+    """Embeds scalar timesteps into vector representations."""
+
     def __init__(self, hidden_size, frequency_embedding_size=256):
         super().__init__()
         self.mlp = nn.Sequential(
@@ -77,19 +64,19 @@ class TimestepEmbedder(nn.Module):
 
     @staticmethod
     def timestep_embedding(t, dim, max_period=10000):
-        """
-        Create sinusoidal timestep embeddings.
-        :param t: a 1-D Tensor of N indices, one per batch element.
-                          These may be fractional.
+        """Create sinusoidal timestep embeddings.
+
+        :param t: a 1-D Tensor of N indices, one per batch element. These may
+            be fractional.
         :param dim: the dimension of the output.
         :param max_period: controls the minimum frequency of the embeddings.
         :return: an (N, D) Tensor of positional embeddings.
         """
         # https://github.com/openai/glide-text2im/blob/main/glide_text2im/nn.py
         half = dim // 2
-        freqs = torch.exp(
-            -math.log(max_period) * torch.arange(start=0, end=half, dtype=torch.float32) / half
-        ).to(device=t.device)
+        freqs = torch.exp(-math.log(max_period) * torch.arange(start=0, end=half, dtype=torch.float32) / half).to(
+            device=t.device
+        )
         args = t[:, None].float() * freqs[None]
         embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
         if dim % 2:
@@ -103,9 +90,11 @@ class TimestepEmbedder(nn.Module):
 
 
 class LabelEmbedder(nn.Module):
+    """Embeds class labels into vector representations.
+
+    Also handles label dropout for classifier-free guidance.
     """
-    Embeds class labels into vector representations. Also handles label dropout for classifier-free guidance.
-    """
+
     def __init__(self, num_classes, hidden_size, dropout_prob):
         super().__init__()
         use_cfg_embedding = dropout_prob > 0
@@ -114,9 +103,7 @@ class LabelEmbedder(nn.Module):
         self.dropout_prob = dropout_prob
 
     def token_drop(self, labels, force_drop_ids=None):
-        """
-        Drops labels to enable classifier-free guidance.
-        """
+        """Drops labels to enable classifier-free guidance."""
         if force_drop_ids is None:
             drop_ids = torch.rand(labels.shape[0], device=labels.device) < self.dropout_prob
         else:
@@ -131,29 +118,30 @@ class LabelEmbedder(nn.Module):
         embeddings = self.embedding_table(labels)
         return embeddings
 
+
 class BEVDropout_layer(nn.Module):
+    """Embeds class labels into vector representations.
+
+    Also handles label dropout for classifier-free guidance.
     """
-    Embeds class labels into vector representations. Also handles label dropout for classifier-free guidance.
-    """
-    def __init__(self, dropout_prob,use_3d=False):
+
+    def __init__(self, dropout_prob, use_3d=False):
         super().__init__()
         # use_cfg_embedding = dropout_prob > 0
         # self.embedding_table = nn.Embedding(num_classes + use_cfg_embedding, hidden_size)
         # self.num_classes = num_classes
         if use_3d:
-            self.maxpool=nn.MaxPool3d(kernel_size=(1,4,4), stride=(1,4,4), padding=(0,0,0))
+            self.maxpool = nn.MaxPool3d(kernel_size=(1, 4, 4), stride=(1, 4, 4), padding=(0, 0, 0))
         else:
-            self.maxpool=nn.MaxPool2d(kernel_size=4, stride=4, padding=0)
+            self.maxpool = nn.MaxPool2d(kernel_size=4, stride=4, padding=0)
         self.dropout_prob = dropout_prob
-        if dropout_prob>0:
+        if dropout_prob > 0:
             print("Use BEV Dropout!")
 
     def token_drop(self, BEV_layout):
-        """
-        Drops labels to enable classifier-free guidance.
-        """
+        """Drops labels to enable classifier-free guidance."""
         if torch.rand(1) < self.dropout_prob:
-            BEV_null = -torch.ones_like(BEV_layout,device=BEV_layout.device)
+            BEV_null = -torch.ones_like(BEV_layout, device=BEV_layout.device)
             BEV_layout = BEV_null
         # drop_mask = torch.rand_like(BEV_layout,device=BEV_layout.device) < self.dropout_prob
         # BEV_layout[drop_mask] =-1
@@ -168,26 +156,24 @@ class BEVDropout_layer(nn.Module):
         # embeddings = self.embedding_table(labels)
         return BEV_layout
 
+
 #################################################################################
 #                                 Core DiT Model                                #
 #################################################################################
 
+
 class DiTBlock(nn.Module):
-    """
-    A DiT block with adaptive layer norm zero (adaLN-Zero) conditioning.
-    """
+    """A DiT block with adaptive layer norm zero (adaLN-Zero) conditioning."""
+
     def __init__(self, hidden_size, num_heads, mlp_ratio=4.0, **block_kwargs):
         super().__init__()
         self.norm1 = nn.LayerNorm(hidden_size, elementwise_affine=False, eps=1e-6)
         self.attn = Attention(hidden_size, num_heads=num_heads, qkv_bias=True, **block_kwargs)
         self.norm2 = nn.LayerNorm(hidden_size, elementwise_affine=False, eps=1e-6)
         mlp_hidden_dim = int(hidden_size * mlp_ratio)
-        approx_gelu = lambda: nn.GELU()#lambda: nn.GELU(approximate="tanh")
+        approx_gelu = lambda: nn.GELU()  # lambda: nn.GELU(approximate="tanh")
         self.mlp = Mlp(in_features=hidden_size, hidden_features=mlp_hidden_dim, act_layer=approx_gelu, drop=0)
-        self.adaLN_modulation = nn.Sequential(
-            nn.SiLU(),
-            nn.Linear(hidden_size, 6 * hidden_size, bias=True)
-        )
+        self.adaLN_modulation = nn.Sequential(nn.SiLU(), nn.Linear(hidden_size, 6 * hidden_size, bias=True))
 
     def forward(self, x, c):
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
@@ -197,17 +183,13 @@ class DiTBlock(nn.Module):
 
 
 class FinalLayer(nn.Module):
-    """
-    The final layer of DiT.
-    """
+    """The final layer of DiT."""
+
     def __init__(self, hidden_size, patch_size, out_channels):
         super().__init__()
         self.norm_final = nn.LayerNorm(hidden_size, elementwise_affine=False, eps=1e-6)
         self.linear = nn.Linear(hidden_size, patch_size * patch_size * out_channels, bias=True)
-        self.adaLN_modulation = nn.Sequential(
-            nn.SiLU(),
-            nn.Linear(hidden_size, 2 * hidden_size, bias=True)
-        )
+        self.adaLN_modulation = nn.Sequential(nn.SiLU(), nn.Linear(hidden_size, 2 * hidden_size, bias=True))
 
     def forward(self, x, c):
         shift, scale = self.adaLN_modulation(c).chunk(2, dim=1)
@@ -219,21 +201,23 @@ class FinalLayer(nn.Module):
 class BEVNet(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_channels=18, out_channels=64, kernel_size=3, stride=3,padding=1)
+        self.conv1 = nn.Conv2d(in_channels=18, out_channels=64, kernel_size=3, stride=3, padding=1)
         self.conv2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=3, padding=1)
         self.conv3 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=2)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, ceil_mode=False,padding=1)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, ceil_mode=False, padding=1)
+
     def forward(self, x):
-        
+
         x = self.conv1(x)
-        x = self.maxpool(x) 
-        x = self.conv2(x) 
-        x = self.maxpool(x) 
+        x = self.maxpool(x)
+        x = self.conv2(x)
+        x = self.maxpool(x)
         x = self.conv3(x)
         return x
 
+
 class MLP_meta(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size,dropout_prob):
+    def __init__(self, input_size, hidden_size, output_size, dropout_prob):
         super().__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size)
@@ -248,18 +232,14 @@ class MLP_meta(nn.Module):
         x = self.fc3(x)
         if self.training and self.dropout_prob > 0:
             if torch.rand(1) < self.dropout_prob:
-                x_null = torch.zeros_like(x,device=x.device)
+                x_null = torch.zeros_like(x, device=x.device)
                 x = x_null
         return x
 
 
-
-
-
 class OccDiT(nn.Module):
-    """
-    Diffusion model with a Transformer backbone.
-    """
+    """Diffusion model with a Transformer backbone."""
+
     def __init__(
         self,
         input_size=50,
@@ -271,23 +251,23 @@ class OccDiT(nn.Module):
         mlp_ratio=4.0,
         bev_dropout_prob=0,
         # num_classes=1000,
-        bev_in_ch = 1,
-        bev_out_ch = 1,
-        meta_num = 1,
+        bev_in_ch=1,
+        bev_out_ch=1,
+        meta_num=1,
         learn_sigma=True,
         use_label=False,
         use_meta=False,
         use_bev_concat=True,
         direct_concat=False,
-        Tframe = 6,
-        temp_attn = True
+        Tframe=6,
+        temp_attn=True,
     ):
         super().__init__()
         self.learn_sigma = learn_sigma
-        self.in_channels = in_channels + bev_out_ch  if use_bev_concat else in_channels
+        self.in_channels = in_channels + bev_out_ch if use_bev_concat else in_channels
         self.out_channels = in_channels * 2 if learn_sigma else in_channels
         self.patch_size = patch_size
-        self.hidden_size=hidden_size
+        self.hidden_size = hidden_size
         self.num_heads = num_heads
         self.use_label = use_label
         self.use_meta = use_meta
@@ -304,15 +284,15 @@ class OccDiT(nn.Module):
             print(f"Use Meta embedding! meta_num:{meta_num}")
             # self.meta_embedder = nn.Linear(meta_num,hidden_size)
             # self.meta_embedder = MLP_meta(meta_num,64,hidden_size,bev_dropout_prob)
-            self.meta_embedder = MLP_meta(meta_num,int(hidden_size/2),hidden_size,bev_dropout_prob)
+            self.meta_embedder = MLP_meta(meta_num, int(hidden_size / 2), hidden_size, bev_dropout_prob)
         if self.use_bev_concat:
-            if direct_concat==False:
+            if direct_concat == False:
                 # self.bev_concat = BEV_concat_net(BEV_in_ch=bev_in_ch,BEV_out_ch=bev_out_ch)
-                self.bev_concat = BEV_concat_net_s(BEV_in_ch=bev_in_ch,BEV_out_ch=bev_out_ch)
+                self.bev_concat = BEV_concat_net_s(BEV_in_ch=bev_in_ch, BEV_out_ch=bev_out_ch)
             else:
                 print("Use MaxPool3d!")
                 # self.bev_concat = nn.MaxPool3d(kernel_size=(1,4,4), stride=(1,4,4), padding=(0,0,0))
-                self.bev_concat = BEVDropout_layer(bev_dropout_prob,use_3d=True)
+                self.bev_concat = BEVDropout_layer(bev_dropout_prob, use_3d=True)
         num_patches = self.x_embedder.num_patches
         # Will use fixed sin-cos embedding:
         self.pos_embed_m = nn.Parameter(torch.zeros(1, num_patches, hidden_size), requires_grad=False)
@@ -320,9 +300,7 @@ class OccDiT(nn.Module):
 
         # self.register_buffer("pos_embed_temporal", self.get_temporal_pos_embed())
 
-        self.blocks = nn.ModuleList([
-            DiTBlock(hidden_size, num_heads, mlp_ratio=mlp_ratio) for _ in range(depth)
-        ])
+        self.blocks = nn.ModuleList([DiTBlock(hidden_size, num_heads, mlp_ratio=mlp_ratio) for _ in range(depth)])
         self.final_layer = FinalLayer(hidden_size, patch_size, self.out_channels)
         self.initialize_weights()
 
@@ -333,13 +311,14 @@ class OccDiT(nn.Module):
                 torch.nn.init.xavier_uniform_(module.weight)
                 if module.bias is not None:
                     nn.init.constant_(module.bias, 0)
+
         self.apply(_basic_init)
 
         # Initialize (and freeze) pos_embed by sin-cos embedding:
         pos_embed = get_2d_sincos_pos_embed(self.pos_embed_m.shape[-1], int(self.x_embedder.num_patches ** 0.5))
         self.pos_embed_m.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
 
-        temp_embed = get_1d_sincos_pos_embed(self.hidden_size,self.Tframe)
+        temp_embed = get_1d_sincos_pos_embed(self.hidden_size, self.Tframe)
         self.temp_embed.data.copy_(torch.from_numpy(temp_embed).float().unsqueeze(0))
 
         # Initialize patch_embed like nn.Linear (instead of nn.Conv2d):
@@ -377,7 +356,7 @@ class OccDiT(nn.Module):
         assert h * w == x.shape[1]
 
         x = x.reshape(shape=(x.shape[0], h, w, p, p, c))
-        x = torch.einsum('nhwpqc->nchpwq', x)
+        x = torch.einsum("nhwpqc->nchpwq", x)
         imgs = x.reshape(shape=(x.shape[0], c, h * p, h * p))
         return imgs
 
@@ -388,69 +367,68 @@ class OccDiT(nn.Module):
         y: [N,T,Cb,Hb,Wb] (BEV)
         meta: [N,m]
         """
-        x = x.permute(0,2,1,3,4) 
+        x = x.permute(0, 2, 1, 3, 4)
         # print(x.shape,y.shape)
         if self.use_bev_concat:
             x = torch.cat([x, self.bev_concat(y)], dim=2)
         # print(x.shape)
-        B,T,C,H,W = x.shape
+        B, T, C, H, W = x.shape
         S = 625
-        x = x.reshape(B*T,C,H,W)
-        x = self.x_embedder(x)  #B*T,S,D
-       
-        x = x + self.pos_embed_m 
+        x = x.reshape(B * T, C, H, W)
+        x = self.x_embedder(x)  # B*T,S,D
 
-        if self.temp_attn==True:
+        x = x + self.pos_embed_m
+
+        if self.temp_attn == True:
             x = rearrange(x, "(B T) S D -> (B S) T D", T=T, S=S)
             x = x + self.temp_embed
             x = rearrange(x, "(B S) T D -> (B T) S D", T=T, S=S)
 
         # x = x.reshape(B,-1,self.hidden_size) # B T*patch_num D
         # print(x.shape)
-        t = self.t_embedder(t)                   # (B, D)
+        t = self.t_embedder(t)  # (B, D)
         # print(t.shape)
         if self.use_meta:
-            pts_num=meta
-            meta_embd=self.meta_embedder(pts_num)
-            c = t + meta_embd           #B D
+            pts_num = meta
+            meta_embd = self.meta_embedder(pts_num)
+            c = t + meta_embd  # B D
         else:
             c = t
-        
-        c_s = c.repeat(1,1,T)
-        c_s = c_s.reshape(-1,self.hidden_size)
-        c_t = c.repeat(1,1,S)
-        c_t = c_t.reshape(-1,self.hidden_size)
-        
-        for i,block in enumerate(self.blocks):
-            if self.temp_attn==True:
-                if i %2 ==0:                          #(B*T,S,D) spatial 
-                    if x.shape[0] == B*S:
+
+        c_s = c.repeat(1, 1, T)
+        c_s = c_s.reshape(-1, self.hidden_size)
+        c_t = c.repeat(1, 1, S)
+        c_t = c_t.reshape(-1, self.hidden_size)
+
+        for i, block in enumerate(self.blocks):
+            if self.temp_attn == True:
+                if i % 2 == 0:  # (B*T,S,D) spatial
+                    if x.shape[0] == B * S:
                         x = rearrange(x, "(B S) T D -> (B T) S D", T=T, S=S)
-                    x = block(x, c_s)                   
-                else:                                  #(B*S,T,D) temporal
-                    if x.shape[0] == B*T:
+                    x = block(x, c_s)
+                else:  # (B*S,T,D) temporal
+                    if x.shape[0] == B * T:
                         x = rearrange(x, "(B T) S D -> (B S) T D", T=T, S=S)
                     x = block(x, c_t)
             else:
-                x = block(x, c_s) # only spatial 
-                
-        if x.shape[0] == B*S:
+                x = block(x, c_s)  # only spatial
+
+        if x.shape[0] == B * S:
             x = rearrange(x, "(B S) T D -> (B T) S D", T=T, S=S)
-        x = self.final_layer(x, c_s)          
-        x = self.unpatchify(x)                   # (N, out_channels, H, W)
+        x = self.final_layer(x, c_s)
+        x = self.unpatchify(x)  # (N, out_channels, H, W)
         # print(x.shape)
-        x = x.reshape(B,T,self.out_channels,H,W)
-        x = x.permute(0,2,1,3,4) 
+        x = x.reshape(B, T, self.out_channels, H, W)
+        x = x.permute(0, 2, 1, 3, 4)
         return x
 
-    def forward_with_cfg(self, x, t, y, meta=None ,cfg_scale=1.0):
-        """
-        Forward pass of DiT, but also batches the unconditional forward pass for classifier-free guidance.
-        """
+    def forward_with_cfg(self, x, t, y, meta=None, cfg_scale=1.0):
+        """Forward pass of DiT, but also batches the unconditional forward pass
+        for classifier-free guidance."""
         # https://github.com/openai/glide-text2im/blob/main/notebooks/text2im.ipynb
         half = x[: len(x) // 2]
         combined = torch.cat([half, half], dim=0)
-        model_out = self.forward(combined, t, y ,meta)
+        model_out = self.forward(combined, t, y, meta)
         # For exact reproducibility reasons, we apply classifier-free guidance on only
         # three channels by default. The standard approach to cfg applies it to all channels.
         # This can be done by uncommenting the following line and commenting-out the line following that.
@@ -462,12 +440,9 @@ class OccDiT(nn.Module):
         return torch.cat([eps, rest], dim=1)
 
 
-
-
 class DiT_WorldModel(nn.Module):
-    """
-    Diffusion model with a Transformer backbone.
-    """
+    """Diffusion model with a Transformer backbone."""
+
     def __init__(
         self,
         input_size=50,
@@ -479,28 +454,28 @@ class DiT_WorldModel(nn.Module):
         mlp_ratio=4.0,
         bev_dropout_prob=0,
         # num_classes=1000,
-        bev_in_ch = 1,
-        bev_out_ch = 1,
-        meta_num = 1,
+        bev_in_ch=1,
+        bev_out_ch=1,
+        meta_num=1,
         learn_sigma=True,
         use_label=False,
         use_meta=False,
         use_bev_concat=True,
         direct_concat=False,
-        T_pred = 6,
-        T_condition = 1
+        T_pred=6,
+        T_condition=1,
     ):
         super().__init__()
         self.learn_sigma = learn_sigma
-        self.in_channels = in_channels + bev_out_ch  if use_bev_concat else in_channels
+        self.in_channels = in_channels + bev_out_ch if use_bev_concat else in_channels
         self.out_channels = in_channels * 2 if learn_sigma else in_channels
         self.patch_size = patch_size
-        self.hidden_size=hidden_size
+        self.hidden_size = hidden_size
         self.num_heads = num_heads
         self.use_label = use_label
         self.use_meta = use_meta
         self.depth = depth
-        self.T_pred =T_pred
+        self.T_pred = T_pred
         self.T_condition = T_condition
         self.Tframe = T_pred + T_condition
         self.use_bev_concat = use_bev_concat
@@ -511,15 +486,15 @@ class DiT_WorldModel(nn.Module):
             self.y_embedder = BEV_condition_net()
         if use_meta:
             print(f"Use Meta embedding! meta_num:{meta_num}")
-            self.meta_embedder = MLP_meta(meta_num,int(hidden_size/2),hidden_size,bev_dropout_prob)
+            self.meta_embedder = MLP_meta(meta_num, int(hidden_size / 2), hidden_size, bev_dropout_prob)
         if self.use_bev_concat:
-            if direct_concat==False:
+            if direct_concat == False:
                 # self.bev_concat = BEV_concat_net(BEV_in_ch=bev_in_ch,BEV_out_ch=bev_out_ch)
-                self.bev_concat = BEV_concat_net_s(BEV_in_ch=bev_in_ch,BEV_out_ch=bev_out_ch)
+                self.bev_concat = BEV_concat_net_s(BEV_in_ch=bev_in_ch, BEV_out_ch=bev_out_ch)
             else:
                 print("Use MaxPool3d!")
                 # self.bev_concat = nn.MaxPool3d(kernel_size=(1,4,4), stride=(1,4,4), padding=(0,0,0))
-                self.bev_concat = BEVDropout_layer(bev_dropout_prob,use_3d=True)
+                self.bev_concat = BEVDropout_layer(bev_dropout_prob, use_3d=True)
         num_patches = self.x_embedder.num_patches
         # Will use fixed sin-cos embedding:
         self.pos_embed_m = nn.Parameter(torch.zeros(1, num_patches, hidden_size), requires_grad=False)
@@ -527,9 +502,7 @@ class DiT_WorldModel(nn.Module):
 
         # self.register_buffer("pos_embed_temporal", self.get_temporal_pos_embed())
 
-        self.blocks = nn.ModuleList([
-            DiTBlock(hidden_size, num_heads, mlp_ratio=mlp_ratio) for _ in range(depth)
-        ])
+        self.blocks = nn.ModuleList([DiTBlock(hidden_size, num_heads, mlp_ratio=mlp_ratio) for _ in range(depth)])
         self.final_layer = FinalLayer(hidden_size, patch_size, self.out_channels)
         self.initialize_weights()
 
@@ -540,13 +513,14 @@ class DiT_WorldModel(nn.Module):
                 torch.nn.init.xavier_uniform_(module.weight)
                 if module.bias is not None:
                     nn.init.constant_(module.bias, 0)
+
         self.apply(_basic_init)
 
         # Initialize (and freeze) pos_embed by sin-cos embedding:
         pos_embed = get_2d_sincos_pos_embed(self.pos_embed_m.shape[-1], int(self.x_embedder.num_patches ** 0.5))
         self.pos_embed_m.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
 
-        temp_embed = get_1d_sincos_pos_embed(self.hidden_size,self.Tframe)
+        temp_embed = get_1d_sincos_pos_embed(self.hidden_size, self.Tframe)
         self.temp_embed.data.copy_(torch.from_numpy(temp_embed).float().unsqueeze(0))
 
         # Initialize patch_embed like nn.Linear (instead of nn.Conv2d):
@@ -584,7 +558,7 @@ class DiT_WorldModel(nn.Module):
         assert h * w == x.shape[1]
 
         x = x.reshape(shape=(x.shape[0], h, w, p, p, c))
-        x = torch.einsum('nhwpqc->nchpwq', x)
+        x = torch.einsum("nhwpqc->nchpwq", x)
         imgs = x.reshape(shape=(x.shape[0], c, h * p, h * p))
         return imgs
 
@@ -596,74 +570,73 @@ class DiT_WorldModel(nn.Module):
         y: [N,Tp,Cb,Hb,Wb] (BEV)
         meta: [N,m]
         """
-        x = x.permute(0,2,1,3,4) 
-        x_ref = x_ref.permute(0,2,1,3,4)
-        
+        x = x.permute(0, 2, 1, 3, 4)
+        x_ref = x_ref.permute(0, 2, 1, 3, 4)
+
         # print(x.shape,y.shape)
         if self.use_bev_concat:
             x = torch.cat([x, self.bev_concat(y)], dim=2)
-            y_ref = torch.zeros_like(x_ref[:,:,0:1],device=x.device)
+            y_ref = torch.zeros_like(x_ref[:, :, 0:1], device=x.device)
             # print(x_ref.shape,y_ref.shape)
-             
-            x_ref = torch.cat([x_ref, y_ref], dim=2) # B Tc C H W
+
+            x_ref = torch.cat([x_ref, y_ref], dim=2)  # B Tc C H W
             # print(x.shape,x_ref.shape)
-        
-        x = torch.cat([x_ref,x], dim=1) # B (Tp + Tc) C H W
+
+        x = torch.cat([x_ref, x], dim=1)  # B (Tp + Tc) C H W
         # print(x.shape)
-        B,T,C,H,W = x.shape
+        B, T, C, H, W = x.shape
         S = 625
-        x = x.reshape(B*T,C,H,W)
-        x = self.x_embedder(x)  #B*T,S,D
-       
-        x = x + self.pos_embed_m 
+        x = x.reshape(B * T, C, H, W)
+        x = self.x_embedder(x)  # B*T,S,D
+
+        x = x + self.pos_embed_m
         x = rearrange(x, "(B T) S D -> (B S) T D", T=T, S=S)
         x = x + self.temp_embed
         x = rearrange(x, "(B S) T D -> (B T) S D", T=T, S=S)
 
         # x = x.reshape(B,-1,self.hidden_size) # B T*patch_num D
         # print(x.shape)
-        t = self.t_embedder(t)                   # (B, D)
+        t = self.t_embedder(t)  # (B, D)
         # print(t.shape)
         if self.use_meta:
-            pts_num=meta
-            meta_embd=self.meta_embedder(pts_num)
-            c = t + meta_embd           #B D
+            pts_num = meta
+            meta_embd = self.meta_embedder(pts_num)
+            c = t + meta_embd  # B D
         else:
             c = t
-        
-        c_s = c.repeat(1,1,T)
-        c_s = c_s.reshape(-1,self.hidden_size)
-        c_t = c.repeat(1,1,S)
-        c_t = c_t.reshape(-1,self.hidden_size)
-        
-        for i,block in enumerate(self.blocks):
-            if i %2 ==0:                          #(B*T,S,D) spatial 
-                if x.shape[0] == B*S:
+
+        c_s = c.repeat(1, 1, T)
+        c_s = c_s.reshape(-1, self.hidden_size)
+        c_t = c.repeat(1, 1, S)
+        c_t = c_t.reshape(-1, self.hidden_size)
+
+        for i, block in enumerate(self.blocks):
+            if i % 2 == 0:  # (B*T,S,D) spatial
+                if x.shape[0] == B * S:
                     x = rearrange(x, "(B S) T D -> (B T) S D", T=T, S=S)
-                x = block(x, c_s)                   
-            else:                                  #(B*S,T,D) temporal
-                if x.shape[0] == B*T:
+                x = block(x, c_s)
+            else:  # (B*S,T,D) temporal
+                if x.shape[0] == B * T:
                     x = rearrange(x, "(B T) S D -> (B S) T D", T=T, S=S)
-                x = block(x, c_t)    
+                x = block(x, c_t)
 
         x = rearrange(x, "(B S) T D -> (B T) S D", T=T, S=S)
-        x = self.final_layer(x, c_s)          
-        x = self.unpatchify(x)                   # (N, out_channels, H, W)
+        x = self.final_layer(x, c_s)
+        x = self.unpatchify(x)  # (N, out_channels, H, W)
         # print(x.shape)
-        x = x.reshape(B,T,self.out_channels,H,W)
-        x = x.permute(0,2,1,3,4) 
+        x = x.reshape(B, T, self.out_channels, H, W)
+        x = x.permute(0, 2, 1, 3, 4)
 
-        x = x[:,:,self.T_condition:]
+        x = x[:, :, self.T_condition :]
         return x
 
-    def forward_with_cfg(self, x, t, x_ref, y, meta=None ,cfg_scale=1.0):
-        """
-        Forward pass of DiT, but also batches the unconditional forward pass for classifier-free guidance.
-        """
+    def forward_with_cfg(self, x, t, x_ref, y, meta=None, cfg_scale=1.0):
+        """Forward pass of DiT, but also batches the unconditional forward pass
+        for classifier-free guidance."""
         # https://github.com/openai/glide-text2im/blob/main/notebooks/text2im.ipynb
         half = x[: len(x) // 2]
         combined = torch.cat([half, half], dim=0)
-        model_out = self.forward(combined, t, x_ref, y ,meta)
+        model_out = self.forward(combined, t, x_ref, y, meta)
         # For exact reproducibility reasons, we apply classifier-free guidance on only
         # three channels by default. The standard approach to cfg applies it to all channels.
         # This can be done by uncommenting the following line and commenting-out the line following that.
@@ -674,11 +647,12 @@ class DiT_WorldModel(nn.Module):
         eps = torch.cat([half_eps, half_eps], dim=0)
         return torch.cat([eps, rest], dim=1)
 
-        
+
 #################################################################################
 #                   Sine/Cosine Positional Embedding Functions                  #
 #################################################################################
 # https://github.com/facebookresearch/mae/blob/main/util/pos_embed.py
+
 
 def get_2d_sincos_pos_embed(embed_dim, grid_size, cls_token=False, extra_tokens=0):
     """
@@ -692,28 +666,30 @@ def get_2d_sincos_pos_embed(embed_dim, grid_size, cls_token=False, extra_tokens=
     grid = np.stack(grid, axis=0)
 
     # grid = grid.reshape([2, 1, grid_size,grid_size])
-    grid = grid.reshape([2, grid_size*grid_size])
+    grid = grid.reshape([2, grid_size * grid_size])
     pos_embed = get_2d_sincos_pos_embed_from_grid(embed_dim, grid)
     if cls_token and extra_tokens > 0:
         pos_embed = np.concatenate([np.zeros([extra_tokens, embed_dim]), pos_embed], axis=0)
     return pos_embed
 
+
 def get_1d_sincos_pos_embed(embed_dim, length, scale=1.0):
-    pos = np.arange(length,dtype=np.float32)#[..., None] / scale
+    pos = np.arange(length, dtype=np.float32)  # [..., None] / scale
     return get_1d_sincos_pos_embed_from_grid(embed_dim, pos)
+
 
 def get_2d_sincos_pos_embed_from_grid(embed_dim, grid):
     assert embed_dim % 2 == 0
- 
+
     # use half of dimensions to encode grid_h
     emb_h = get_1d_sincos_pos_embed_from_grid(embed_dim // 2, grid[0])  # (H*W, D/2)
     emb_w = get_1d_sincos_pos_embed_from_grid(embed_dim // 2, grid[1])  # (H*W, D/2)
 
-    emb = np.concatenate([emb_h, emb_w], axis=1) # (H*W, D)
+    emb = np.concatenate([emb_h, emb_w], axis=1)  # (H*W, D)
     return emb
 
 
-def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):  #hidden_size=embed_dim 1152 pos=256 
+def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):  # hidden_size=embed_dim 1152 pos=256
     """
     embed_dim: output dimension for each position
     pos: a list of positions to be encoded: size (M,)
@@ -722,20 +698,18 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):  #hidden_size=embed_dim 1
 
     assert embed_dim % 2 == 0
     omega = np.arange(embed_dim // 2, dtype=np.float64)
-    
-    omega /= embed_dim / 2.
-    omega = 1. / 10000**omega  # (D/2,)
 
-    # print("omega",omega.shape) #288  
-    # print("pos",pos.shape)  
+    omega /= embed_dim / 2.0
+    omega = 1.0 / 10000 ** omega  # (D/2,)
 
-    out = np.einsum('m,d->md', pos, omega)  # (M, D/2), outer product
+    # print("omega",omega.shape) #288
+    # print("pos",pos.shape)
 
-    emb_sin = np.sin(out) # (M, D/2)
-    emb_cos = np.cos(out) # (M, D/2)
+    out = np.einsum("m,d->md", pos, omega)  # (M, D/2), outer product
+
+    emb_sin = np.sin(out)  # (M, D/2)
+    emb_cos = np.cos(out)  # (M, D/2)
 
     emb = np.concatenate([emb_sin, emb_cos], axis=1)  # (M, D)
 
-    return emb #  256 576
-
-
+    return emb  #  256 576

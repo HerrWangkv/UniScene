@@ -1,12 +1,11 @@
 import math
-from typing import TypeVar, Optional, Iterator
+from typing import Iterator, Optional, TypeVar
 
 import torch
-from torch.utils.data import Sampler, Dataset
 import torch.distributed as dist
+from torch.utils.data import Dataset, Sampler
 
-
-T_co = TypeVar('T_co', covariant=True)
+T_co = TypeVar("T_co", covariant=True)
 
 
 class CustomDistributedSampler(Sampler[T_co]):
@@ -56,9 +55,16 @@ class CustomDistributedSampler(Sampler[T_co]):
         ...     train(loader)
     """
 
-    def __init__(self, dataset: Dataset, num_replicas: Optional[int] = None,
-                 rank: Optional[int] = None, shuffle: bool = True,
-                 seed: int = 0, drop_last: bool = False, last_iter: int = 0) -> None:
+    def __init__(
+        self,
+        dataset: Dataset,
+        num_replicas: Optional[int] = None,
+        rank: Optional[int] = None,
+        shuffle: bool = True,
+        seed: int = 0,
+        drop_last: bool = False,
+        last_iter: int = 0,
+    ) -> None:
         if num_replicas is None:
             if not dist.is_available():
                 raise RuntimeError("Requires distributed package to be available")
@@ -81,7 +87,8 @@ class CustomDistributedSampler(Sampler[T_co]):
             self.num_samples = math.ceil(
                 # `type:ignore` is required because Dataset cannot provide a default __len__
                 # see NOTE in pytorch/torch/utils/data/sampler.py
-                (len(self.dataset) - self.num_replicas) / self.num_replicas  # type: ignore
+                (len(self.dataset) - self.num_replicas)
+                / self.num_replicas  # type: ignore
             )
         else:
             self.num_samples = math.ceil(len(self.dataset) / self.num_replicas)  # type: ignore
@@ -102,18 +109,18 @@ class CustomDistributedSampler(Sampler[T_co]):
 
         if not self.drop_last:
             # add extra samples to make it evenly divisible
-            indices += indices[:(self.total_size - len(indices))]
+            indices += indices[: (self.total_size - len(indices))]
         else:
             # remove tail of data to make it evenly divisible.
-            indices = indices[:self.total_size]
+            indices = indices[: self.total_size]
         assert len(indices) == self.total_size
 
         # subsample
-        indices = indices[self.rank:self.total_size:self.num_replicas]
+        indices = indices[self.rank : self.total_size : self.num_replicas]
         if not self.first_run:
             assert len(indices) == self.num_samples
         else:
-            indices = indices[self.last_iter:]
+            indices = indices[self.last_iter :]
             self.last_iter = 0
             self.first_run = False
 
@@ -123,15 +130,15 @@ class CustomDistributedSampler(Sampler[T_co]):
         return self.num_samples
 
     def set_epoch(self, epoch: int) -> None:
-        r"""
-        Sets the epoch for this sampler. When :attr:`shuffle=True`, this ensures all replicas
-        use a different random ordering for each epoch. Otherwise, the next iteration of this
-        sampler will yield the same ordering.
+        r"""Sets the epoch for this sampler. When :attr:`shuffle=True`, this
+        ensures all replicas use a different random ordering for each epoch.
+        Otherwise, the next iteration of this sampler will yield the same
+        ordering.
 
         Arguments:
             epoch (int): Epoch number.
         """
         self.epoch = epoch
-    
+
     def set_last_iter(self, last_iter: int):
         self.last_iter = last_iter

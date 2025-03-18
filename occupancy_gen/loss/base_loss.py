@@ -1,9 +1,11 @@
 import torch.nn as nn
+
 writer = None
 
-class BaseLoss(nn.Module):
 
-    """ Base loss class.
+class BaseLoss(nn.Module):
+    """Base loss class.
+
     args:
         weight: weight of current loss.
         input_keys: keys for actual inputs to calculate_loss().
@@ -12,12 +14,7 @@ class BaseLoss(nn.Module):
         loss_func: the actual loss func to calculate loss.
     """
 
-    def __init__(
-            self, 
-            weight=1.0,
-            input_dict={
-                'input': 'input'},
-            **kwargs):
+    def __init__(self, weight=1.0, input_dict={"input": "input"}, **kwargs):
         super().__init__()
         self.weight = weight
         self.input_dict = input_dict
@@ -25,7 +22,7 @@ class BaseLoss(nn.Module):
         self.writer = writer
 
     # def calculate_loss(self, **kwargs):
-        # return self.loss_func(*[kwargs[key] for key in self.input_keys])    
+    # return self.loss_func(*[kwargs[key] for key in self.input_keys])
 
     def forward(self, inputs):
         actual_inputs = {}

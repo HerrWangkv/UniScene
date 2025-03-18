@@ -3,54 +3,46 @@
 
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
+"""A minimal training script for DiT using PyTorch DDP."""
+import argparse
+import datetime
+import logging
+import os
+import shutil
+from collections import OrderedDict
+from copy import deepcopy
+from glob import glob
+from time import time
 
-"""
-A minimal training script for DiT using PyTorch DDP.
-"""
 import torch
+
 # the first flag below was False when we tested this script but True makes A100 training a lot faster:
 # torch.backends.cuda.matmul.allow_tf32 = True
 # torch.backends.cudnn.allow_tf32 = True
 import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.utils.data import DataLoader, Dataset
-from torch.utils.data.distributed import DistributedSampler
-from torchvision.datasets import ImageFolder
-from torchvision import transforms
-import numpy as np
-from collections import OrderedDict
-from PIL import Image
-from copy import deepcopy
-from glob import glob
-from time import time
-import argparse
-import logging
-import os
-from download import find_model
-
-from diffusion.models import OccDiT
-from diffusion import create_diffusion
-from tqdm import tqdm
-# from diffusers.models import AutoencoderKL
-
-import datetime
-import shutil
-
 from dataload_util import CustomDataset_Tframe_continuous
-from torch.optim.lr_scheduler import StepLR
-import random
-
+from diffusion import create_diffusion
+from diffusion.models import OccDiT
+from download import find_model
 from mmengine import Config
 from mmengine.registry import MODELS
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.optim.lr_scheduler import StepLR
+from torch.utils.data import DataLoader
+from torch.utils.data.distributed import DistributedSampler
+from tqdm import tqdm
+
+# from diffusers.models import AutoencoderKL
+
+
 #################################################################################
 #                             Training Helper Functions                         #
 #################################################################################
 
+
 @torch.no_grad()
 def update_ema(ema_model, model, decay=0.9999):
-    """
-    Step the EMA model towards the current model.
-    """
+    """Step the EMA model towards the current model."""
     ema_params = OrderedDict(ema_model.named_parameters())
     model_params = OrderedDict(model.named_parameters())
 
@@ -60,30 +52,23 @@ def update_ema(ema_model, model, decay=0.9999):
 
 
 def requires_grad(model, flag=True):
-    """
-    Set requires_grad flag for all parameters in a model.
-    """
+    """Set requires_grad flag for all parameters in a model."""
     for p in model.parameters():
         p.requires_grad = flag
 
 
 def cleanup():
-    """
-    End DDP training.
-    """
+    """End DDP training."""
     dist.destroy_process_group()
 
 
-def create_logger(logging_dir,rank):
-    """
-    Create a logger that writes to a log file and stdout.
-    """
+def create_logger(logging_dir, rank):
+    """Create a logger that writes to a log file and stdout."""
     if rank == 0:  # real logger
         logging.basicConfig(
             level=logging.DEBUG,
             # format='[\033[34m%(asctime)s\033[0m] %(message)s',
-
-            datefmt='%Y-%m-%d %H:%M:%S',
+            datefmt="%Y-%m-%d %H:%M:%S",
             # filename=f"{logging_dir}/log.txt"
             handlers=[logging.StreamHandler(), logging.FileHandler(f"{logging_dir}/log.txt")]
             # handlers=logging.StreamHandler()
@@ -97,8 +82,7 @@ def create_logger(logging_dir,rank):
 
 
 def filter_state_dict(state_dict, ignore_keys):
-    """
-    """
+    """"""
     filtered_dict = OrderedDict()
     for k, v in state_dict.items():
         if k in ignore_keys:
@@ -107,19 +91,14 @@ def filter_state_dict(state_dict, ignore_keys):
     return filtered_dict
 
 
-
 #################################################################################
 #                                  Training Loop                                #
 #################################################################################
 
+
 def main(args):
-    """
-    Trains a new DiT model.
-    """
+    """Trains a new DiT model."""
     assert torch.cuda.is_available(), "Training currently requires at least one GPU."
-
-
-
 
     # Variables for monitoring/logging purposes:
     start_epoch = 0
@@ -128,50 +107,46 @@ def main(args):
     running_loss = 0
     start_time = time()
 
-
-
     # Setup DDP:
     dist.init_process_group("nccl")
     assert args.global_batch_size % dist.get_world_size() == 0, f"Batch size must be divisible by world size."
     # rank = dist.get_rank()
-    rank=args.local_rank
+    rank = args.local_rank
     device = rank % torch.cuda.device_count()
     seed = args.global_seed * dist.get_world_size() + rank
-    
+
     torch.manual_seed(seed)
     torch.cuda.set_device(device)
     print(f"Starting rank={rank}, seed={seed}, world_size={dist.get_world_size()}.")
-    
-    
 
     # Setup an experiment folder:
     if rank == 0:
         os.makedirs(args.results_dir, exist_ok=True)  # Make results folder (holds all experiment subfolders)
-        experiment_index = len(glob(f"{args.results_dir}/*"))
+        len(glob(f"{args.results_dir}/*"))
         model_string_name = args.model.replace("/", "-")  # e.g., DiT-XL/2 --> DiT-XL-2 (for naming folders)
-        
-        ct_str=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
+
+        ct_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         # experiment_dir = f"{args.results_dir}/{experiment_index:03d}-{model_string_name}"  # Create an experiment folder
         experiment_dir = f"{args.results_dir}/{ct_str}"  # Create an experiment folder
         checkpoint_dir = f"{experiment_dir}/checkpoints"  # Stores saved model checkpoints
         os.makedirs(checkpoint_dir, exist_ok=True)
-        logger = create_logger(experiment_dir,rank)
+        logger = create_logger(experiment_dir, rank)
         logger.info(f"Experiment directory created at {experiment_dir}")
     else:
-        logger = create_logger(None,rank)
+        logger = create_logger(None, rank)
 
     # Create model:
-    
-    use_bev_concat=True
-    use_occ_meta=True
-    in_ch=4
-    Tframe=5
+
+    use_bev_concat = True
+    use_occ_meta = True
+    in_ch = 4
+    Tframe = 5
     meta_num_mode = 3
     use_vae = True
     if meta_num_mode == 1:
-        meta_num=4*Tframe + 12*(Tframe-1)
+        meta_num = 4 * Tframe + 12 * (Tframe - 1)
     elif meta_num_mode == 2:
-        meta_num= 4 + 12*(Tframe-1)
+        meta_num = 4 + 12 * (Tframe - 1)
     elif meta_num_mode == 3:
         meta_num = 4
 
@@ -179,23 +154,34 @@ def main(args):
     scale_factor = 70
     use_noise_prior = True
     lambda_np = args.lambda_noise_prior
-    
-    bev_ch_use=[0,2,8,9,10,11,12,13,14,15,16,17]
 
-    DiT_cfg={"depth":args.depth, "in_channels":in_ch, "hidden_size":args.hidden_size,"use_label":False, "use_bev_concat":use_bev_concat,"bev_in_ch":1,"bev_out_ch":1,"use_meta":use_occ_meta, "bev_dropout_prob":0.1,"meta_num":meta_num,"direct_concat":True,"Tframe":Tframe}
+    bev_ch_use = [0, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+
+    DiT_cfg = {
+        "depth": args.depth,
+        "in_channels": in_ch,
+        "hidden_size": args.hidden_size,
+        "use_label": False,
+        "use_bev_concat": use_bev_concat,
+        "bev_in_ch": 1,
+        "bev_out_ch": 1,
+        "use_meta": use_occ_meta,
+        "bev_dropout_prob": 0.1,
+        "meta_num": meta_num,
+        "direct_concat": True,
+        "Tframe": Tframe,
+    }
     # model = DiT_Occsora(**DiT_cfg).to(device)
     model = OccDiT(**DiT_cfg).to(device)
-    if rank==0:
-        shutil.copy("train_continuous_mVAE.py",experiment_dir)
-        shutil.copy("run_train_dit.sh",experiment_dir)
-
+    if rank == 0:
+        shutil.copy("train_continuous_mVAE.py", experiment_dir)
+        shutil.copy("run_train_dit.sh", experiment_dir)
 
     # Note that parameter initialization is done within the DiT constructor
     ema = deepcopy(model).to(device)  # Create an EMA of the model for use after training
     requires_grad(ema, False)
     # model = DDP(model.to(device), device_ids=[rank])
 
-    
     opt = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=0.001)
     scheduler = StepLR(opt, step_size=10000, gamma=0.9)
 
@@ -207,53 +193,45 @@ def main(args):
     # Load checkpoint
     if args.ckpt_preDIT:
         state_dict = find_model(args.ckpt_preDIT)
-        ignore_dict={"x_embedder.proj.weight"}
-        state_dict_F=filter_state_dict(state_dict,ignore_dict)
-        model.load_state_dict(state_dict_F,strict=False)
+        ignore_dict = {"x_embedder.proj.weight"}
+        state_dict_F = filter_state_dict(state_dict, ignore_dict)
+        model.load_state_dict(state_dict_F, strict=False)
 
     if args.ckpt:
-    #      -- Re train ---
-        checkpoint = torch.load(args.ckpt,map_location='cpu')
-        model.load_state_dict(checkpoint['model'], strict=False)
-        ema.load_state_dict(checkpoint['ema'], strict=False)
-        opt.load_state_dict(checkpoint['opt'])
+        #      -- Re train ---
+        checkpoint = torch.load(args.ckpt, map_location="cpu")
+        model.load_state_dict(checkpoint["model"], strict=False)
+        ema.load_state_dict(checkpoint["ema"], strict=False)
+        opt.load_state_dict(checkpoint["opt"])
         del checkpoint
         logger.info(f"Using checkpoint: {args.ckpt}")
 
-
     diffusion = create_diffusion(timestep_respacing="")  # default: 1000 steps, linear noise schedule
-    
+
     if use_vae:
-        import model_vae
+        pass
+
         cfg = Config.fromfile(args.vae_config)
         vae = MODELS.build(cfg.model)
-        vae_ckpt = torch.load(args.vae_ckpt,map_location='cpu')
-        vae.load_state_dict(vae_ckpt['state_dict'], strict=True)
+        vae_ckpt = torch.load(args.vae_ckpt, map_location="cpu")
+        vae.load_state_dict(vae_ckpt["state_dict"], strict=True)
         vae = vae.to(device)
         vae.eval()
-    
-    model = DDP(model.to(device), device_ids=[rank],find_unused_parameters=True)
-    
-    
+
+    model = DDP(model.to(device), device_ids=[rank], find_unused_parameters=True)
+
     logger.info(f"DiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
-
-    
     imageset = args.imageset
     bev_path = args.bev_path
     gts_path = args.gts_path
 
+    dataset = CustomDataset_Tframe_continuous(
+        imageset, gts_path, bev_path, bev_ch_use, meta_num=4, Tframe=Tframe, training=True
+    )
 
-    
-    dataset = CustomDataset_Tframe_continuous(imageset,gts_path,bev_path,bev_ch_use,meta_num=4,Tframe=Tframe,training=True)
-
-    
     sampler = DistributedSampler(
-        dataset,
-        num_replicas=dist.get_world_size(),
-        rank=rank,
-        shuffle=True,
-        seed=args.global_seed
+        dataset, num_replicas=dist.get_world_size(), rank=rank, shuffle=True, seed=args.global_seed
     )
     loader = DataLoader(
         dataset,
@@ -262,32 +240,28 @@ def main(args):
         sampler=sampler,
         num_workers=args.num_workers,
         pin_memory=True,
-        drop_last=True
+        drop_last=True,
     )
 
-
-
-   # Initial state
+    # Initial state
     if args.ckpt:
-        train_steps = int(args.ckpt.split('/')[-1].split('.')[0])
+        train_steps = int(args.ckpt.split("/")[-1].split(".")[0])
         start_epoch = int(train_steps / (len(dataset) / args.global_batch_size))
         logger.info(f"Initial state: step={train_steps}, epoch={start_epoch}")
     else:
-        update_ema(ema, model.module, decay=0)  # Ensure EMA is initialized with synced weights    
-
+        update_ema(ema, model.module, decay=0)  # Ensure EMA is initialized with synced weights
 
     # Prepare models for training:
     # update_ema(ema, model.module, decay=0)  # Ensure EMA is initialized with synced weights
     model.train()  # important! This enables embedding dropout for classifier-free guidance
     ema.eval()  # EMA model should always be in eval mode
 
-
     logger.info(f"Training for {args.epochs} epochs...")
     for epoch in range(start_epoch, args.epochs):
         sampler.set_epoch(epoch)
         logger.info(f"Beginning epoch {epoch}...")
         # for x,y,occ_ori,occ_meta,pose_meta in tqdm(loader):
-        for occ_ori,y,occ_meta,pose_meta in tqdm(loader):
+        for occ_ori, y, occ_meta, pose_meta in tqdm(loader):
             occ_ori = occ_ori.to(device)
 
             y = y.to(device)
@@ -295,27 +269,28 @@ def main(args):
 
             if use_vae:
                 with torch.no_grad():
-                    x=vae.encode(occ_ori) *scale_factor # x: B C T H W  *20 make std = 1
-                z_ref = x[:,:,ref_idx].unsqueeze(2)
+                    x = vae.encode(occ_ori) * scale_factor  # x: B C T H W  *20 make std = 1
+                z_ref = x[:, :, ref_idx].unsqueeze(2)
                 z_ref = z_ref.repeat(1, 1, Tframe, 1, 1)
                 z_ref = z_ref.to(device)
             else:
-                x = x.to(device) * scale_factor #50 # B T C H W
-                z_ref = x[:,ref_idx].unsqueeze(1)
+                x = x.to(device) * scale_factor  # 50 # B T C H W
+                z_ref = x[:, ref_idx].unsqueeze(1)
                 z_ref = z_ref.repeat(1, Tframe, 1, 1, 1)
-                z_ref = z_ref.permute(0,2,1,3,4).to(device)
-                x = x.permute(0,2,1,3,4) 
- 
+                z_ref = z_ref.permute(0, 2, 1, 3, 4).to(device)
+                x = x.permute(0, 2, 1, 3, 4)
 
             t = torch.randint(0, diffusion.num_timesteps, (x.shape[0],), device=device)
 
             if use_occ_meta:
                 if meta_num_mode == 1:
-                        new_meta = torch.cat((occ_meta.reshape(-1,4*Tframe),pose_meta.reshape(-1,12*(Tframe-1))),dim=1)
+                    new_meta = torch.cat(
+                        (occ_meta.reshape(-1, 4 * Tframe), pose_meta.reshape(-1, 12 * (Tframe - 1))), dim=1
+                    )
                 elif meta_num_mode == 2:
-                    new_meta = torch.cat((occ_meta[:,ref_idx],pose_meta.reshape(-1,12*(Tframe-1))),dim=1)
+                    new_meta = torch.cat((occ_meta[:, ref_idx], pose_meta.reshape(-1, 12 * (Tframe - 1))), dim=1)
                 elif meta_num_mode == 3:
-                    new_meta = occ_meta[:,ref_idx]
+                    new_meta = occ_meta[:, ref_idx]
 
                 new_meta = new_meta.to(device)
                 # print(new_meta.shape)
@@ -323,7 +298,6 @@ def main(args):
             else:
                 model_kwargs = dict(y=y)
 
-            
             # lambda_z = 0.03
             noise_prior = torch.randn_like(x) + lambda_np * z_ref
 
@@ -336,10 +310,9 @@ def main(args):
                 occ_meta = occ_meta.to(device)
                 w_loss = loss_dict["loss"] * occ_meta.squeeze()
                 # print(w_loss.shape)
-                loss=w_loss.mean()
+                loss = w_loss.mean()
             else:
                 loss = loss_dict["loss"].mean()
-            
 
             opt.zero_grad()
             loss.backward()
@@ -361,12 +334,17 @@ def main(args):
                 avg_loss = torch.tensor(running_loss / log_steps, device=device)
                 dist.all_reduce(avg_loss, op=dist.ReduceOp.SUM)
                 avg_loss = avg_loss.item() / dist.get_world_size()
-                logger.info(f"(step={train_steps:07d}) Train Loss: {avg_loss:.4f}, Train Steps/Sec: {steps_per_sec:.2f}")
-                if rank==0:
-                    with open(f"{experiment_dir}/log.txt", 'a') as file:
-                        current_lr = opt.param_groups[0]['lr']
-                        print(f"(step={train_steps:07d}) lr:{current_lr:.6f} Train Loss: {avg_loss:.4f}, Train Steps/Sec: {steps_per_sec:.2f}", file=file)
-                    
+                logger.info(
+                    f"(step={train_steps:07d}) Train Loss: {avg_loss:.4f}, Train Steps/Sec: {steps_per_sec:.2f}"
+                )
+                if rank == 0:
+                    with open(f"{experiment_dir}/log.txt", "a") as file:
+                        current_lr = opt.param_groups[0]["lr"]
+                        print(
+                            f"(step={train_steps:07d}) lr:{current_lr:.6f} Train Loss: {avg_loss:.4f}, Train Steps/Sec: {steps_per_sec:.2f}",
+                            file=file,
+                        )
+
                 # Reset monitoring variables:
                 running_loss = 0
                 log_steps = 0
@@ -379,7 +357,7 @@ def main(args):
                         "model": model.module.state_dict(),
                         "ema": ema.state_dict(),
                         "opt": opt.state_dict(),
-                        "args": args
+                        "args": args,
                     }
                     checkpoint_path = f"{checkpoint_dir}/{train_steps:07d}.pt"
                     torch.save(checkpoint, checkpoint_path)
@@ -402,7 +380,7 @@ if __name__ == "__main__":
     parser.add_argument("--gts_path", type=str)
     parser.add_argument("--results-dir", type=str, default="results")
     parser.add_argument("--epochs", type=int, default=600)
-    parser.add_argument("--global-batch-size", type=int, default=40)  #72
+    parser.add_argument("--global-batch-size", type=int, default=40)  # 72
     parser.add_argument("--global-seed", type=int, default=0)
     parser.add_argument("--vae", type=str, choices=["ema", "mse"], default="ema")  # Choice doesn't affect training
     parser.add_argument("--vae_ckpt", type=str, default=None)
@@ -412,10 +390,9 @@ if __name__ == "__main__":
     parser.add_argument("--ckpt-every", type=int, default=5000)
     parser.add_argument("--ckpt", type=str, default=None)
     parser.add_argument("--ckpt-preDIT", type=str, default=None)
-    parser.add_argument("--confidence", type=int,default=0)
-    parser.add_argument("--depth", type=int, default=12) 
-    parser.add_argument("--hidden_size", type=int, default=512) 
+    parser.add_argument("--confidence", type=int, default=0)
+    parser.add_argument("--depth", type=int, default=12)
+    parser.add_argument("--hidden_size", type=int, default=512)
     parser.add_argument("--lambda_noise_prior", type=float, default=0.03)
     args = parser.parse_args()
     main(args)
-   

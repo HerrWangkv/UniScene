@@ -78,7 +78,7 @@ MODEL:
             sky_region: 0.4
             merged_nsample: 1024
         render_ssl_cfg:
-          #type: NeuSModelV2 
+          #type: NeuSModelV2
           type: NeuSModelV2LiDAROnly
           pred_intensity: True
           pred_raydrop: True
@@ -90,12 +90,12 @@ MODEL:
                 out_dim: 17 # 16 + 1
                 hidden_size: 16
                 n_blocks: 3
-            # rgb_decoder_cfg: 
-            #     in_dim: 54 # 32 + 16 + 3 + 3, 
-            #     out_dim: 48 # 32 + 16, 
+            # rgb_decoder_cfg:
+            #     in_dim: 54 # 32 + 16 + 3 + 3,
+            #     out_dim: 48 # 32 + 16,
             #     hidden_size: 16
             #     n_blocks: 3
-            interpolate_cfg: 
+            interpolate_cfg:
               type: SmoothSampler
               padding_mode: zeros
             beta_init: 0.3
@@ -119,7 +119,7 @@ MODEL:
               rgb_loss: 0.0
               raydrop_loss: 0.2
               intensity_loss: 10.0
-            
+
 
 OPTIMIZATION:
     BATCH_SIZE_PER_GPU: 6

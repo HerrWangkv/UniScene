@@ -1,18 +1,28 @@
-import torch
-from torch import Tensor
-import torch.nn as nn
 # from .utils import load_state_dict_from_url
-from typing import Type, Any, Callable, Union, List, Optional
+from typing import Callable, List, Optional, Type, Union
+
+import torch
+import torch.nn as nn
+from torch import Tensor
 from torchvision import models
 
+
 def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
-    """3x3 convolution with padding"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=dilation, groups=groups, bias=False, dilation=dilation)
+    """3x3 convolution with padding."""
+    return nn.Conv2d(
+        in_planes,
+        out_planes,
+        kernel_size=3,
+        stride=stride,
+        padding=dilation,
+        groups=groups,
+        bias=False,
+        dilation=dilation,
+    )
 
 
 def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> nn.Conv2d:
-    """1x1 convolution"""
+    """1x1 convolution."""
     return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 
@@ -28,13 +38,13 @@ class BasicBlock(nn.Module):
         groups: int = 1,
         base_width: int = 64,
         dilation: int = 1,
-        norm_layer: Optional[Callable[..., nn.Module]] = None
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
     ) -> None:
         super(BasicBlock, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         if groups != 1 or base_width != 64:
-            raise ValueError('BasicBlock only supports groups=1 and base_width=64')
+            raise ValueError("BasicBlock only supports groups=1 and base_width=64")
         if dilation > 1:
             raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
         # Both self.conv1 and self.downsample layers downsample the input when stride != 1
@@ -83,12 +93,12 @@ class Bottleneck(nn.Module):
         groups: int = 1,
         base_width: int = 64,
         dilation: int = 1,
-        norm_layer: Optional[Callable[..., nn.Module]] = None
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
     ) -> None:
         super(Bottleneck, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
-        width = int(planes * (base_width / 64.)) * groups
+        width = int(planes * (base_width / 64.0)) * groups
         # Both self.conv2 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv1x1(inplanes, width)
         self.bn1 = norm_layer(width)
@@ -122,14 +132,12 @@ class Bottleneck(nn.Module):
 
         return out
 
-def conv_bn_relu(ch_in, ch_out, kernel, stride=1, padding=0, bn=True,
-                 relu=True):
-    assert (kernel % 2) == 1, \
-        'only odd kernel is supported but kernel = {}'.format(kernel)
+
+def conv_bn_relu(ch_in, ch_out, kernel, stride=1, padding=0, bn=True, relu=True):
+    assert (kernel % 2) == 1, "only odd kernel is supported but kernel = {}".format(kernel)
 
     layers = []
-    layers.append(nn.Conv2d(ch_in, ch_out, kernel, stride, padding,
-                            bias=not bn))
+    layers.append(nn.Conv2d(ch_in, ch_out, kernel, stride, padding, bias=not bn))
     if bn:
         layers.append(nn.BatchNorm2d(ch_out))
     if relu:
@@ -140,9 +148,7 @@ def conv_bn_relu(ch_in, ch_out, kernel, stride=1, padding=0, bn=True,
     return layers
 
 
-
-class RN_BEV_concat(nn.Module):# (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
-
+class RN_BEV_concat(nn.Module):  # (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
     def __init__(
         self,
         block: Type[Union[BasicBlock, Bottleneck]],
@@ -154,7 +160,7 @@ class RN_BEV_concat(nn.Module):# (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
         groups: int = 1,
         width_per_group: int = 64,
         replace_stride_with_dilation: Optional[List[bool]] = None,
-        norm_layer: Optional[Callable[..., nn.Module]] = None
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
     ) -> None:
         super(RN_BEV_concat, self).__init__()
         if norm_layer is None:
@@ -168,18 +174,18 @@ class RN_BEV_concat(nn.Module):# (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
             # the 2x2 stride with a dilated convolution instead
             replace_stride_with_dilation = [False, False, False]
         if len(replace_stride_with_dilation) != 3:
-            raise ValueError("replace_stride_with_dilation should be None "
-                             "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
+            raise ValueError(
+                "replace_stride_with_dilation should be None "
+                "or a 3-element tuple, got {}".format(replace_stride_with_dilation)
+            )
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1_m = nn.Conv2d(BEV_ch, self.inplanes, kernel_size=3, stride=2, padding=1,
-                               bias=False)
+        self.conv1_m = nn.Conv2d(BEV_ch, self.inplanes, kernel_size=3, stride=2, padding=1, bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         # self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2,
-                                       dilate=replace_stride_with_dilation[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0])
         # self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
         #                                dilate=replace_stride_with_dilation[1])
         # self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
@@ -190,17 +196,15 @@ class RN_BEV_concat(nn.Module):# (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
         # self.dec_layer0= conv_bn_relu(64, Out_ch, kernel=3, stride=1,
         #                             padding=1, bn=False, relu=False)
 
-        self.dec_layer1= conv_bn_relu(128, 64, kernel=1, stride=1,
-                                    padding=0, bn=False, relu=True)
-        self.dec_layer0= conv_bn_relu(64, Out_ch, kernel=1, stride=1,
-                                    padding=0, bn=False, relu=False)
+        self.dec_layer1 = conv_bn_relu(128, 64, kernel=1, stride=1, padding=0, bn=False, relu=True)
+        self.dec_layer0 = conv_bn_relu(64, Out_ch, kernel=1, stride=1, padding=0, bn=False, relu=False)
 
         # self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         # self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
             elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
@@ -215,8 +219,14 @@ class RN_BEV_concat(nn.Module):# (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
 
-    def _make_layer(self, block: Type[Union[BasicBlock, Bottleneck]], planes: int, blocks: int,
-                    stride: int = 1, dilate: bool = False) -> nn.Sequential:
+    def _make_layer(
+        self,
+        block: Type[Union[BasicBlock, Bottleneck]],
+        planes: int,
+        blocks: int,
+        stride: int = 1,
+        dilate: bool = False,
+    ) -> nn.Sequential:
         norm_layer = self._norm_layer
         downsample = None
         previous_dilation = self.dilation
@@ -230,13 +240,23 @@ class RN_BEV_concat(nn.Module):# (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
             )
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
-                            self.base_width, previous_dilation, norm_layer))
+        layers.append(
+            block(
+                self.inplanes, planes, stride, downsample, self.groups, self.base_width, previous_dilation, norm_layer
+            )
+        )
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
-            layers.append(block(self.inplanes, planes, groups=self.groups,
-                                base_width=self.base_width, dilation=self.dilation,
-                                norm_layer=norm_layer))
+            layers.append(
+                block(
+                    self.inplanes,
+                    planes,
+                    groups=self.groups,
+                    base_width=self.base_width,
+                    dilation=self.dilation,
+                    norm_layer=norm_layer,
+                )
+            )
 
         return nn.Sequential(*layers)
 
@@ -253,8 +273,7 @@ class RN_BEV_concat(nn.Module):# (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
         # x = self.layer4(x)
 
         x = self.dec_layer1(x)
-        x = self.dec_layer0(x) 
-
+        x = self.dec_layer0(x)
 
         # x = self.avgpool(x)
         # x = torch.flatten(x, 1)
@@ -265,8 +284,8 @@ class RN_BEV_concat(nn.Module):# (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
     def forward(self, x: Tensor) -> Tensor:
         return self._forward_impl(x)
 
-class RN_BEV_concat_s(nn.Module):# (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
 
+class RN_BEV_concat_s(nn.Module):  # (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
     def __init__(
         self,
         block: Type[Union[BasicBlock, Bottleneck]],
@@ -278,7 +297,7 @@ class RN_BEV_concat_s(nn.Module):# (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
         groups: int = 1,
         width_per_group: int = 64,
         replace_stride_with_dilation: Optional[List[bool]] = None,
-        norm_layer: Optional[Callable[..., nn.Module]] = None
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
     ) -> None:
         super(RN_BEV_concat_s, self).__init__()
         if norm_layer is None:
@@ -292,22 +311,22 @@ class RN_BEV_concat_s(nn.Module):# (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
             # the 2x2 stride with a dilated convolution instead
             replace_stride_with_dilation = [False, False, False]
         if len(replace_stride_with_dilation) != 3:
-            raise ValueError("replace_stride_with_dilation should be None "
-                             "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
+            raise ValueError(
+                "replace_stride_with_dilation should be None "
+                "or a 3-element tuple, got {}".format(replace_stride_with_dilation)
+            )
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1_m = nn.Conv2d(BEV_ch, self.inplanes, kernel_size=3, stride=2, padding=1,
-                               bias=False)
+        self.conv1_m = nn.Conv2d(BEV_ch, self.inplanes, kernel_size=3, stride=2, padding=1, bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         # self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, self.inplanes, layers[0])
-        self.layer2 = self._make_layer(block, Out_ch, layers[1], stride=2,
-                                       dilate=replace_stride_with_dilation[0])
+        self.layer2 = self._make_layer(block, Out_ch, layers[1], stride=2, dilate=replace_stride_with_dilation[0])
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
             elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
@@ -322,8 +341,14 @@ class RN_BEV_concat_s(nn.Module):# (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
 
-    def _make_layer(self, block: Type[Union[BasicBlock, Bottleneck]], planes: int, blocks: int,
-                    stride: int = 1, dilate: bool = False) -> nn.Sequential:
+    def _make_layer(
+        self,
+        block: Type[Union[BasicBlock, Bottleneck]],
+        planes: int,
+        blocks: int,
+        stride: int = 1,
+        dilate: bool = False,
+    ) -> nn.Sequential:
         norm_layer = self._norm_layer
         downsample = None
         previous_dilation = self.dilation
@@ -337,13 +362,23 @@ class RN_BEV_concat_s(nn.Module):# (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
             )
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
-                            self.base_width, previous_dilation, norm_layer))
+        layers.append(
+            block(
+                self.inplanes, planes, stride, downsample, self.groups, self.base_width, previous_dilation, norm_layer
+            )
+        )
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
-            layers.append(block(self.inplanes, planes, groups=self.groups,
-                                base_width=self.base_width, dilation=self.dilation,
-                                norm_layer=norm_layer))
+            layers.append(
+                block(
+                    self.inplanes,
+                    planes,
+                    groups=self.groups,
+                    base_width=self.base_width,
+                    dilation=self.dilation,
+                    norm_layer=norm_layer,
+                )
+            )
 
         return nn.Sequential(*layers)
 
@@ -361,8 +396,8 @@ class RN_BEV_concat_s(nn.Module):# (N,BEV_ch,200,200)-> (N,Out_ch,50,50)
     def forward(self, x: Tensor) -> Tensor:
         return self._forward_impl(x)
 
-class RN_BEV_condition(nn.Module):# (N,BEV_ch,200,200)-> (N,256)
 
+class RN_BEV_condition(nn.Module):  # (N,BEV_ch,200,200)-> (N,256)
     def __init__(
         self,
         block: Type[Union[BasicBlock, Bottleneck]],
@@ -373,7 +408,7 @@ class RN_BEV_condition(nn.Module):# (N,BEV_ch,200,200)-> (N,256)
         groups: int = 1,
         width_per_group: int = 64,
         replace_stride_with_dilation: Optional[List[bool]] = None,
-        norm_layer: Optional[Callable[..., nn.Module]] = None
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
     ) -> None:
         super(RN_BEV_condition, self).__init__()
         if norm_layer is None:
@@ -387,20 +422,19 @@ class RN_BEV_condition(nn.Module):# (N,BEV_ch,200,200)-> (N,256)
             # the 2x2 stride with a dilated convolution instead
             replace_stride_with_dilation = [False, False, False]
         if len(replace_stride_with_dilation) != 3:
-            raise ValueError("replace_stride_with_dilation should be None "
-                             "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
+            raise ValueError(
+                "replace_stride_with_dilation should be None "
+                "or a 3-element tuple, got {}".format(replace_stride_with_dilation)
+            )
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1_m = nn.Conv2d(BEV_ch, self.inplanes, kernel_size=7, stride=5, padding=3,
-                               bias=False)
+        self.conv1_m = nn.Conv2d(BEV_ch, self.inplanes, kernel_size=7, stride=5, padding=3, bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2,
-                                       dilate=replace_stride_with_dilation[0])
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
-                                       dilate=replace_stride_with_dilation[1])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0])
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1])
         # self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
         #                                dilate=replace_stride_with_dilation[2])
 
@@ -409,7 +443,7 @@ class RN_BEV_condition(nn.Module):# (N,BEV_ch,200,200)-> (N,256)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
             elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
@@ -424,8 +458,14 @@ class RN_BEV_condition(nn.Module):# (N,BEV_ch,200,200)-> (N,256)
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
 
-    def _make_layer(self, block: Type[Union[BasicBlock, Bottleneck]], planes: int, blocks: int,
-                    stride: int = 1, dilate: bool = False) -> nn.Sequential:
+    def _make_layer(
+        self,
+        block: Type[Union[BasicBlock, Bottleneck]],
+        planes: int,
+        blocks: int,
+        stride: int = 1,
+        dilate: bool = False,
+    ) -> nn.Sequential:
         norm_layer = self._norm_layer
         downsample = None
         previous_dilation = self.dilation
@@ -439,13 +479,23 @@ class RN_BEV_condition(nn.Module):# (N,BEV_ch,200,200)-> (N,256)
             )
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
-                            self.base_width, previous_dilation, norm_layer))
+        layers.append(
+            block(
+                self.inplanes, planes, stride, downsample, self.groups, self.base_width, previous_dilation, norm_layer
+            )
+        )
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
-            layers.append(block(self.inplanes, planes, groups=self.groups,
-                                base_width=self.base_width, dilation=self.dilation,
-                                norm_layer=norm_layer))
+            layers.append(
+                block(
+                    self.inplanes,
+                    planes,
+                    groups=self.groups,
+                    base_width=self.base_width,
+                    dilation=self.dilation,
+                    norm_layer=norm_layer,
+                )
+            )
 
         return nn.Sequential(*layers)
 
@@ -470,35 +520,38 @@ class RN_BEV_condition(nn.Module):# (N,BEV_ch,200,200)-> (N,256)
     def forward(self, x: Tensor) -> Tensor:
         return self._forward_impl(x)
 
-def BEV_concat_net(BEV_in_ch=18,BEV_out_ch=4):
-    model=RN_BEV_concat(BasicBlock, [2, 2, 2, 2],BEV_ch=BEV_in_ch,Out_ch=BEV_out_ch)
+
+def BEV_concat_net(BEV_in_ch=18, BEV_out_ch=4):
+    model = RN_BEV_concat(BasicBlock, [2, 2, 2, 2], BEV_ch=BEV_in_ch, Out_ch=BEV_out_ch)
     # resnet18=models.resnet18(pretrained=True)
     # model.load_state_dict(resnet18.state_dict(),strict=False)
     return model
 
-def BEV_concat_net_s(BEV_in_ch=1,BEV_out_ch=4):
-    model=RN_BEV_concat_s(BasicBlock, [2, 2, 2, 2],BEV_ch=BEV_in_ch,Out_ch=BEV_out_ch)
+
+def BEV_concat_net_s(BEV_in_ch=1, BEV_out_ch=4):
+    model = RN_BEV_concat_s(BasicBlock, [2, 2, 2, 2], BEV_ch=BEV_in_ch, Out_ch=BEV_out_ch)
     # resnet18=models.resnet18(pretrained=True)
     # model.load_state_dict(resnet18.state_dict(),strict=False)
     return model
+
 
 def BEV_condition_net():
-    model=RN_BEV_condition(BasicBlock, [2, 2, 2, 2],BEV_ch=4)
-    resnet18=models.resnet18(pretrained=True)
-    model.load_state_dict(resnet18.state_dict(),strict=False)
+    model = RN_BEV_condition(BasicBlock, [2, 2, 2, 2], BEV_ch=4)
+    resnet18 = models.resnet18(pretrained=True)
+    model.load_state_dict(resnet18.state_dict(), strict=False)
     return model
+
 
 if __name__ == "__main__":
     # model18=RN_BEV_condition(BasicBlock, [2, 2, 2, 2])
-    resnet18=models.resnet18(pretrained=True)
-    model18=BEV_concat_net(BEV_in_ch=18,BEV_out_ch=4)
+    resnet18 = models.resnet18(pretrained=True)
+    model18 = BEV_concat_net(BEV_in_ch=18, BEV_out_ch=4)
     # model18=BEV_condition_net()
     # model18.load_state_dict(resnet18.state_dict(),strict=False)
 
-    input=torch.randn((8,18,200,200))
+    input = torch.randn((8, 18, 200, 200))
     output = model18(input)
     print(output.shape)
-
 
     # import torch.nn.functional as F
     # #map_classes= ['drivable_area','ped_crossing','walkway','stop_line','carpark_area','road_divider','lane_divider','road_block']
@@ -511,5 +564,3 @@ if __name__ == "__main__":
     # down_input = torch.mm(down_input,w_bev)
     # down_input = down_input.reshape(-1,1,50,50)
     # print(down_input.shape,w_bev.shape)
-
-

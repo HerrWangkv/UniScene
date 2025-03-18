@@ -24,13 +24,12 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from jaxtyping import Float
-from numpy.typing import NDArray
 from torch import Tensor
 
 _EPS = np.finfo(float).eps * 4.0
 
 
-def unit_vector(data: NDArray, axis: Optional[int] = None) -> np.ndarray:
+def unit_vector(data, axis: Optional[int] = None) -> np.ndarray:
     """Return ndarray normalized by length, i.e. Euclidean norm, along axis.
 
     Args:
@@ -139,7 +138,7 @@ def unitquat_to_rotmat(quat):
     return matrix
 
 
-def quaternion_from_matrix(matrix: NDArray, isprecise: bool = False) -> np.ndarray:
+def quaternion_from_matrix(matrix, isprecise: bool = False) -> np.ndarray:
     """Return quaternion from rotation matrix.
 
     Args:
@@ -195,7 +194,7 @@ def quaternion_from_matrix(matrix: NDArray, isprecise: bool = False) -> np.ndarr
 
 
 def quaternion_slerp(
-    quat0: NDArray, quat1: NDArray, fraction: float, spin: int = 0, shortestpath: bool = True
+    quat0, quat1, fraction: float, spin: int = 0, shortestpath: bool = True
 ) -> np.ndarray:
     """Return spherical linear interpolation between two quaternions.
     Args:
@@ -396,7 +395,7 @@ def unitquat_slerp(q0, q1, steps, shortest_arc=True):
     return interpolated_q
 
 
-def quaternion_matrix(quaternion: NDArray) -> np.ndarray:
+def quaternion_matrix(quaternion) -> np.ndarray:
     """Return homogeneous rotation matrix from quaternion.
 
     Args:
@@ -463,7 +462,7 @@ def matrix_to_rotation_6d(matrix: torch.Tensor) -> torch.Tensor:
     return matrix[..., :2, :].clone().reshape(batch_dim + (6,))
 
 
-def get_interpolated_poses(pose_a: NDArray, pose_b: NDArray, steps: int = 10, include_last=True) -> List[float]:
+def get_interpolated_poses(pose_a, pose_b, steps: int = 10, include_last=True) -> List[float]:
     """Return interpolation of poses with specified number of steps.
     Args:
         pose_a: first pose

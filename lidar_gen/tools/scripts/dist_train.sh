@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-export PATH="/data/ericliu/my_packages/miniconda3/bin:$PATH" 
-__conda_setup="$('/data/ericliu/my_packages/miniconda3/condabin/conda' 'shell.bash' 'hook' 2> /dev/null)" 
-eval "$__conda_setup" 
+export PATH="/data/ericliu/my_packages/miniconda3/bin:$PATH"
+__conda_setup="$('/data/ericliu/my_packages/miniconda3/condabin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+eval "$__conda_setup"
 conda activate occ2lidar
 
 set -x
@@ -20,4 +20,3 @@ done
 echo $PORT
 
 python -m torch.distributed.launch --nproc_per_node=${NGPUS} --rdzv_endpoint=localhost:${PORT} tools/train.py --launcher pytorch ${PY_ARGS}
-

@@ -1,0 +1,6 @@
+build
+*.so
+*.egg-info
+*.pkl
+__pycache__
+occupancy_gen/gen_occ

@@ -1,13 +1,11 @@
-from typing import Tuple, Union
 import io
+from typing import Tuple, Union
+
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
-from PIL import Image
-
 import numpy as np
 import torch
-
-
+from PIL import Image
 
 # fmt: off
 COLORS = {
@@ -39,7 +37,6 @@ COLORS = {
     'bicycle':              (220, 20, 60),  # Crimson
     'pedestrian':           (0, 0, 230),    # Blue
     'traffic_cone':         (47, 79, 79),   # Darkslategrey
-
     'nothing':              (200, 200, 200)
 }
 # fmt: on
@@ -141,10 +138,8 @@ def classes_to_np(classes):
     return semantic
 
 
-def visualize_map(
-    map: Union[np.ndarray, torch.Tensor], target_size=200
-) -> np.ndarray:
-    """visualize bev map
+def visualize_map(map: Union[np.ndarray, torch.Tensor], target_size=200) -> np.ndarray:
+    """Visualize bev map.
 
     Args:
         cfg (_type_): projet cfg
@@ -159,19 +154,48 @@ def visualize_map(
     map = map.transpose(1, 2, 0)  # channel last
 
     # we assume map has static + dynamic layers, classes can be None
-    map_classes= ['drivable_area','ped_crossing','walkway','stop_line','carpark_area','road_divider','lane_divider','road_block']
-    object_classes=['car','truck','construction_vehicle','bus','trailer','barrier','motorcycle','bicycle','pedestrian','traffic_cone']
-
-    
+    map_classes = [
+        "drivable_area",
+        "ped_crossing",
+        "walkway",
+        "stop_line",
+        "carpark_area",
+        "road_divider",
+        "lane_divider",
+        "road_block",
+    ]
+    object_classes = [
+        "car",
+        "truck",
+        "construction_vehicle",
+        "bus",
+        "trailer",
+        "barrier",
+        "motorcycle",
+        "bicycle",
+        "pedestrian",
+        "traffic_cone",
+    ]
 
     static_semantic = classes_to_np(map_classes)
     dynamic_semantic = classes_to_np(object_classes)
 
-    use_map_classes = ['drivable_area','ped_crossing','walkway','road_divider','lane_divider']
+    use_map_classes = ["drivable_area", "ped_crossing", "walkway", "road_divider", "lane_divider"]
     use_map_idx = [map_classes.index(cls) for cls in use_map_classes]
 
-    use_obj_classes = ['car','truck','construction_vehicle','bus','trailer','barrier','motorcycle','bicycle','pedestrian','traffic_cone']
-    use_obj_idx = [object_classes.index(cls)+len(static_semantic) for cls in use_obj_classes]
+    use_obj_classes = [
+        "car",
+        "truck",
+        "construction_vehicle",
+        "bus",
+        "trailer",
+        "barrier",
+        "motorcycle",
+        "bicycle",
+        "pedestrian",
+        "traffic_cone",
+    ]
+    use_obj_idx = [object_classes.index(cls) + len(static_semantic) for cls in use_obj_classes]
 
     empty = np.uint8(COLORS["nothing"])[None, None]
     semantic_used = set()
@@ -182,16 +206,14 @@ def visualize_map(
     # static
     # static_map = map[..., : len(static_semantic)]
     static_map = map[..., use_map_idx]
-    mask_static, rendered_static, semantic_used = render_static(
-        static_map, static_semantic, semantic_used)
+    mask_static, rendered_static, semantic_used = render_static(static_map, static_semantic, semantic_used)
 
     # dynamic
     # dynamic_map = map[
     #     ..., len(static_semantic): len(static_semantic) + len(dynamic_semantic)
     # ]
     dynamic_map = map[..., use_obj_idx]
-    mask_dynamic, rendered_dynamic, semantic_used = render_dynamic(
-        dynamic_map, dynamic_semantic, semantic_used)
+    mask_dynamic, rendered_dynamic, semantic_used = render_dynamic(dynamic_map, dynamic_semantic, semantic_used)
 
     print(semantic_used)
     # combine
@@ -215,7 +237,6 @@ def visualize_map(
     rendered = rendered.rotate(90)
     rendered = np.asarray(rendered)
 
-    
     # # add legend
     # (h, w, _) = rendered.shape
     # legend = show_legend(semantic_used, long_edge_size=target_size)

@@ -1,4 +1,4 @@
-torchrun --nnodes=1 --nproc_per_node=8 \
+torchrun --nnodes=1 --nproc_per_node=1 \
     eval_OccDiT.py \
     --imageset="./data/nuscenes_infos_val_temporal_v3_scene.pkl" \
     --bev_path="./data/step2/val/bevmap_4" \

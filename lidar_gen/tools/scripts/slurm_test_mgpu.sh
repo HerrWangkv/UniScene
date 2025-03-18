@@ -27,4 +27,3 @@ srun -p ${PARTITION} \
     --kill-on-bad-exit=1 \
     ${SRUN_ARGS} \
     python -u test.py --launcher slurm --tcp_port $PORT ${PY_ARGS}
-
