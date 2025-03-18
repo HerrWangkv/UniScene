@@ -167,7 +167,7 @@ Note that the road lines from the BEV layouts are projected onto the semantic oc
 	-  [Video Generation.](video_gen/README.md) The generated video will be saved at "./video_gen/outputs".
 
 ### ❤️Acknowledgements
-Our implementation is based on the following open source projects, thanks for their excellent works: [Occworld](https://github.com/wzzheng/OccWorld), [OpenPCDet](https://github.com/open-mmlab/OpenPCDet), [SVD](https://github.com/Stability-AI/generative-models).
+Our implementation is based on the excellent open source projects: [Occworld](https://github.com/wzzheng/OccWorld), [OpenPCDet](https://github.com/open-mmlab/OpenPCDet), [SVD](https://github.com/Stability-AI/generative-models).
 
 
 
