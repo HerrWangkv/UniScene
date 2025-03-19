@@ -278,7 +278,7 @@ if __name__ == "__main__":
         focal_positions = cam2lidar @ np.array([0.0, 0.0, constant_f, 1.0])
         focal_positions = focal_positions[:, :3]
 
-        draw_nusc_occupancy(
+        draw_nusc_occupancy_Bev_Front(
             voxels=pred_voxels,
             vox_origin=np.array(point_cloud_range[:3]),
             voxel_size=np.array(voxel_size),

@@ -45,12 +45,12 @@ dependencies = [
     "pyopengl (==3.1.0)",
     "pyvirtualdisplay (==3.0)",
     "xvfbwrapper (>=0.2.9,<0.3.0)",
-    "mayavi (==4.8.2)",
     "configobj (==5.0.8)",
     "natsort (==8.4.0)",
     "kornia (==0.6.9)",
     "jaxtyping (>=0.2.36,<0.3.0)",
     "spconv-cu120 (>=2.3.6,<3.0.0)",
-    "vtk (==9.2.2)",
-    "pyqt5 (==5.15.2)"
+    "vtk (==9.0.2)",
+    "pyqt5 (==5.15.10)",
+    "setuptools (==65.5.0)",
 ]

@@ -31,6 +31,11 @@ from tqdm import tqdm
 from utils.metric_util import multi_step_fid_mmd, multi_step_MeanIou, multi_step_TemporalConsistency
 
 from occupancy_gen.visualize_nuscenes_occupancy import draw_nusc_occupancy_Bev_Front
+import model_vae  # noqa
+from model_vae.VAE.AE_eval import Autoencoder_2D  # FID MMD
+
+# logger
+from mmengine.logging import MMLogger
 
 #################################################################################
 #                                  Eval Loop                                    #
@@ -158,17 +163,12 @@ def main(args):
 
     OccVAE.eval()
 
-    from model_vae.VAE.AE_eval import Autoencoder_2D  # FID MMD
-
     ae_eval = Autoencoder_2D(num_classes=18, expansion=4)
     ae_ckpt_path = args.ae_ckpt
     ae_ckpt = torch.load(ae_ckpt_path, map_location="cpu")
     ae_eval.load_state_dict(ae_ckpt["state_dict"], strict=True)
     ae_eval = ae_eval.to(device)
     ae_eval.eval()
-
-    # logger
-    from mmengine.logging import MMLogger
 
     if not vis:
         log_file = os.path.join(log_path, f"Dit_eval_ddim_continuous_mVAE_{iter_num}_{args.cfg_scale}_{lambda_np}.log")

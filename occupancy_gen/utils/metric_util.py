@@ -300,6 +300,7 @@ class multi_step_TemporalConsistency:
                 self.total_count += cur_sim.shape[0]  # Add the number of samples (batch size)
 
             # Update former frame for the next iteration
+            former_frame_features = normalized_features  # noqa
 
     def _after_epoch(self):
         # Reduce across all processes (in multi-GPU training)
