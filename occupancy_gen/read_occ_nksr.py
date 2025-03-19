@@ -126,9 +126,9 @@ def replace_occ_grid_with_bev(
 ):
     # self.classes= ['drivable_area','ped_crossing','walkway','stop_line','carpark_area','road_divider','lane_divider','road_block']
     # occ road [11] drivable area
-    # 当bev 值在 bev_replace_idx 里面时，occ中的可行驶区域（11）使用occ_replace_new_idx中对应的值替换
-    # default ped_crossing->18; stop_line->19 (删除); roal_divider->20; lane_divider->21
-    # default shape: input_occ: [200,200,16]; bevlayout: [18,200,200], 分辨率只要一致即可
+     
+    # default ped_crossing->18; stop_line->19 ( ); roal_divider->20; lane_divider->21
+    # default shape: input_occ: [200,200,16]; bevlayout: [18,200,200],  
 
     roal_divider_mask = bevlayout[5, :, :].astype(np.uint8)
     lane_divider_mask = bevlayout[6, :, :].astype(np.uint8)
@@ -145,13 +145,12 @@ def replace_occ_grid_with_bev(
     bev_replace_mask = []
     for i in range(n):
         bev_replace_mask.append(bevlayout[bev_replace_idx[i]] == 1)
-    # 对于这些位置，检查3D occupancy中z轴上最高且不为空的类别
+    
     for x in range(x_max):
         for y in range(y_max):
             for i in range(n):
                 if bev_replace_mask[i][x, y]:
-                    # 获取(x, y)位置的3D occupancy数据
-                    # print(x,y)
+                  
                     occupancy_data = input_occ[x, y, :]
 
                     if driva_area_idx in occupancy_data:

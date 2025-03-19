@@ -65,8 +65,8 @@ def render_occ_semantic_map(item_data, base_path, occ_base_path, layout_base_pat
     #            'timestamp', 'occ_gt_path', 'gt_boxes', 'gt_names', 'gt_velocity', 'num_lidar_pts', 'num_radar_pts',
     #            'valid_flag'])
 
-    # occ_base_path = "/data/code/uniscene/gs_render/data/GT_occupancy/dense_voxels_with_semantic/"
-    # layout_base_path = "s3://guojiazhe/nuscenes/12hz_bevlayout_800_800/"
+    # occ_base_path = "gs_render/data/GT_occupancy/dense_voxels_with_semantic/"
+    # layout_base_path = "nuscenes/12hz_bevlayout_800_800/"
     is_vis = True
 
     sample_token = item_data["token"]

@@ -34,7 +34,7 @@ DATA_AUGMENTOR:
         - NAME: random_world_scaling
           WORLD_SCALE_RANGE: [0.95, 1.05]
 
-# 防止下游config写错，这里不提供默认
+ 
 # DATA_PROCESSOR:
 #     - NAME: mask_points_and_boxes_outside_range
 #       REMOVE_OUTSIDE_BOXES: True

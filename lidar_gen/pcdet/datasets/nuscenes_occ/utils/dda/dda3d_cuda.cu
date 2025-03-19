@@ -12,13 +12,12 @@ __global__ void dda3d_kernel(
     
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_rays) return;
-
-    // 获取当前射线的方向
+ 
     float dx = rays[i * 3 + 0];
     float dy = rays[i * 3 + 1];
     float dz = rays[i * 3 + 2];
 
-    // 计算射线起点在占用网格中的索引
+ 
     int x = (0 - Xmin) / vx;
     int y = (0 - Ymin) / vy;
     int z = (0 - Zmin) / vz;
@@ -35,18 +34,18 @@ __global__ void dda3d_kernel(
     float tMaxY = (dy > 0) ? (Ymin + (y + 1) * vy) / dy : (Ymin + y * vy) / dy;
     float tMaxZ = (dz > 0) ? (Zmin + (z + 1) * vz) / dz : (Zmin + z * vz) / dz;
 
-    // 遍历射线经过的体素
+ 
     while ((0 <= x && x < W) && (0 <= y && y < H) && (0 <= z && z < D)) {
-        // 注意，grid大小为[W, H, D]
+     
         int grid_index = z + y * D + x * H * D;
 
-        // 如果体素被占用，设置结果为 true
+      
         if (grid[grid_index]) {
             intersections[i] = true;
             return;
         }
 
-        // 更新步进逻辑，选择最小的 tMax 并更新相应的索引
+    
         if (tMaxX < tMaxY) {
             if (tMaxX < tMaxZ) {
                 x += stepX;
@@ -65,7 +64,7 @@ __global__ void dda3d_kernel(
             }
         }
     }
-    intersections[i] = false;  // 如果没有相交，结果为 false
+    intersections[i] = false;   
 }
 
 
@@ -77,12 +76,11 @@ __global__ void raycast_kernel(
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_rays) return;
 
-    // 获取当前射线的方向
+ 
     float dx = rays[i * 3 + 0];
     float dy = rays[i * 3 + 1];
     float dz = rays[i * 3 + 2];
-
-    // 计算射线起点在占用网格中的索引
+ 
     int x = (0 - Xmin) / vx;
     int y = (0 - Ymin) / vy;
     int z = (0 - Zmin) / vz;
@@ -99,12 +97,12 @@ __global__ void raycast_kernel(
     float tMaxY = (dy > 0) ? (Ymin + (y + 1) * vy) / dy : (Ymin + y * vy) / dy;
     float tMaxZ = (dz > 0) ? (Zmin + (z + 1) * vz) / dz : (Zmin + z * vz) / dz;
 
-    // 遍历射线经过的体素
+  
     while ((0 <= x && x < W) && (0 <= y && y < H) && (0 <= z && z < D)) {
-        // 注意，grid大小为[W, H, D]
+      
         int grid_index = z + y * D + x * H * D;
 
-        // 如果体素被占用，设置结果为 true
+     
         if (grid[grid_index]) {
             intersections[i] = true;
             hits[i] = x;
@@ -113,7 +111,7 @@ __global__ void raycast_kernel(
             return;
         }
 
-        // 更新步进逻辑，选择最小的 tMax 并更新相应的索引
+        
         if (tMaxX < tMaxY) {
             if (tMaxX < tMaxZ) {
                 x += stepX;
@@ -132,7 +130,7 @@ __global__ void raycast_kernel(
             }
         }
     }
-    intersections[i] = false;  // 如果没有相交，结果为 false
+    intersections[i] = false;   
 }
 
 void dda3d_launcher(const float* rays, const bool* grid, bool* intersections,

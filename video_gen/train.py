@@ -150,14 +150,14 @@ def save_img_seq_to_video(out_path, img_seq, fps):
 
     old_out_path = out_path
     with tempfile.NamedTemporaryFile(suffix=".mp4", delete=True) as temp_file:
-        # 临时文件的名称
+   
         out_path = temp_file.name
         writer = imageio.get_writer(out_path, fps=fps)
         for img in img_seq:
             writer.append_data(img)
         writer.close()
         shutil.copyfile(out_path, old_out_path)
-        # 删除临时文件
+ 
 
 
 class SetupCallback(Callback):
@@ -346,7 +346,7 @@ class ImageLogger(Callback):
                 path = os.path.join(dir_path, filename)
                 # img = Image.fromarray(grid)
                 # img.save(path)
-                # 使用imshow绘制热力图
+        
                 plt.imshow(grid, cmap="hot")
                 # plt.colorbar(heatmap)
                 plt.axis("off")

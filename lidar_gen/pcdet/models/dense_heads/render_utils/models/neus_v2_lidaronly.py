@@ -92,7 +92,7 @@ class NeuSModelV2LiDAROnly(SurfaceModel):
             "rgb": None,
             "depth": depth,
             # "weights": weights,
-            "sdf": lidar_field_outputs["sdf"], # 用于和depth gt计算loss
+            "sdf": lidar_field_outputs["sdf"],  
             "gradients": gradients,
             "z_vals": lidar_ray_samples.frustums.starts,
             'lidar_relative': lidar_relative

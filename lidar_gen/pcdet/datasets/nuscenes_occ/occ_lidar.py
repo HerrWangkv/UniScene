@@ -18,21 +18,20 @@ from .utils.poses import interpolate_trajectories
 from .utils import poses as pose_utils
 
 def cartesian_to_spherical(coords):
-    # coords 是大小为 (N, 3) 的 ndarray，表示 N 个点的 (x, y, z) 坐标
+    
     x = coords[:, 0]
     y = coords[:, 1]
     z = coords[:, 2]
-    
-    # 计算 r
+     
     r = np.sqrt(x**2 + y**2 + z**2)
     
-    # 计算 theta (xy 平面的角度)
+ 
     theta = np.arctan2(y, x)
     
-    # 计算 phi (与 z 轴的夹角)
+  
     phi = np.arctan2(np.sqrt(x**2 + y**2), z)
     
-    # 返回大小为 (N, 3) 的球坐标 (theta, phi, r)
+ 
     return np.stack((theta, phi, r), axis=-1)
 
 class Occ2LiDARDataset(DatasetTemplate):
@@ -132,7 +131,7 @@ class Occ2LiDARDataset(DatasetTemplate):
         #pc = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points[:,0:3]))
         #o3d.visualization.draw_geometries([pc])
         #points = points[:, :3]
-        # # todo: 归一化
+        # # todo:  
         # result[:, 0] = (result[:, 0] - lidar_range[0])/(lidar_range[3]- lidar_range[0])
         # result[:, 1] = (result[:, 1] - lidar_range[1])/(lidar_range[4]- lidar_range[1])
         # result[:, 2] = (result[:, 2] - lidar_range[2])/(lidar_range[5]- lidar_range[2])
@@ -234,7 +233,7 @@ class Occ2LiDARDataset(DatasetTemplate):
             for_vis = np.concatenate([np.concatenate([input_dict['points'][:, :3], rad], axis=-1), np.concatenate([input_dict['occ'][:, :3], white], axis=-1)], axis=0)
             for_vis.astype('float32').tofile('z.bin')
 
-        # 数据增强会有潜在的bug，occ本质上是离散的，数据增强中的旋转缩放平移等操作会破坏其原本的规则分布（因为后面要进行体素化）
+        
         data_dict = self.prepare_data(data_dict=input_dict)
 
         vis = False

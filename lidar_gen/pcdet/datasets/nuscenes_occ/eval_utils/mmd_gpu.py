@@ -112,7 +112,7 @@ def disc_gpu(samples1, samples2):
 
     res = 0.0
     N = samples1.size(0)
-    B = 800  # 您可以根据显存大小调整块的大小
+    B = 800  # adjust with GPU memeory
 
     for i in range(0, N, B):
         samples1_block = samples1[i:i+B]  # [B, C]

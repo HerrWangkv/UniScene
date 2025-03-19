@@ -85,8 +85,8 @@ def draw_nusc_occupancy(
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument("--pred_dir", default="D://data//多模态可视化//lidar//pred//")
-    parser.add_argument("--save_path", default="D://data//多模态可视化//lidar//pred//vis")
+    parser.add_argument("--pred_dir", default="lidar//pred//")
+    parser.add_argument("--save_path", default="lidar//pred//vis")
     args = parser.parse_args()
 
     point_cloud_range = [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]

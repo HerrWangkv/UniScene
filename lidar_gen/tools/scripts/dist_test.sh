@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-export PATH="/data/ericliu/my_packages/miniconda3/bin:$PATH"
-__conda_setup="$('/data/ericliu/my_packages/miniconda3/condabin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+export PATH="/conda3/bin:$PATH"
+__conda_setup="$('conda3/condabin/conda' 'shell.bash' 'hook' 2> /dev/null)"
 eval "$__conda_setup"
 conda activate occ2lidar
 

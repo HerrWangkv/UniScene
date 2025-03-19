@@ -51,7 +51,7 @@ def nb_process_label(processed_label, sorted_label_voxel_pair):
 
     return processed_label
 
-def load_occ_gt(occ_path,  ## 原始分辨率800*800*64, 调整grid_size进行下采样
+def load_occ_gt(occ_path,  ## ori 800*800*64, grid_size downsample
                 grid_size=np.array([500, 500, 40 ]), # 200, 200, 16
                 unoccupied=0,
                 resample=False):
@@ -84,21 +84,20 @@ def load_occ_gt(occ_path,  ## 原始分辨率800*800*64, 调整grid_size进行�
     return processed_label
 
 def cartesian_to_spherical(coords):
-    # coords 是大小为 (N, 3) 的 ndarray，表示 N 个点的 (x, y, z) 坐标
+ 
     x = coords[:, 0]
     y = coords[:, 1]
     z = coords[:, 2]
     
-    # 计算 r
+    
     r = np.sqrt(x**2 + y**2 + z**2)
     
-    # 计算 theta (xy 平面的角度)
+    
     theta = np.arctan2(y, x)
     
-    # 计算 phi (与 z 轴的夹角)
+  
     phi = np.arctan2(np.sqrt(x**2 + y**2), z)
-    
-    # 返回大小为 (N, 3) 的球坐标 (theta, phi, r)
+ 
     return np.stack((theta, phi, r), axis=-1)
 
 class Occ2LiDARDatasetNKSRGen(Occ2LiDARDataset):
@@ -116,12 +115,7 @@ class Occ2LiDARDatasetNKSRGen(Occ2LiDARDataset):
         self.occ_size = dataset_cfg.GRID_SIZE
         self.occ_voxel_size = dataset_cfg.VOXEL_SIZE
         self.occ_root = occ_root
-        #full_list = []
-        ## 选择lidar索引occ或者occ索引lidar
-        #if self.training:
-        #full_list = glob( lidar_root+"*" )
-            # /generator_tos/data/nuscenes/samples/LIDAR_TOP/n008-2018-09-18-14-54-39-0400__LIDAR_TOP__1537297544449565.pcd.bin
-        
+ 
         # self.full_list = full_list
 
         # train list or val list

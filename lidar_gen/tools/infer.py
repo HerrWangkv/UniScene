@@ -12,21 +12,20 @@ from pcdet.utils import common_utils
 
 
 def cartesian_to_spherical(coords):
-    # coords 是大小为 (N, 3) 的 ndarray，表示 N 个点的 (x, y, z) 坐标
+   
     x = coords[:, 0]
     y = coords[:, 1]
     z = coords[:, 2]
 
-    # 计算 r
+ 
     r = np.sqrt(x ** 2 + y ** 2 + z ** 2)
 
-    # 计算 theta (xy 平面的角度)
+  
     theta = np.arctan2(y, x)
-
-    # 计算 phi (与 z 轴的夹角)
+ 
     phi = np.arctan2(np.sqrt(x ** 2 + y ** 2), z)
 
-    # 返回大小为 (N, 3) 的球坐标 (theta, phi, r)
+ 
     return np.stack((theta, phi, r), axis=-1)
 
 

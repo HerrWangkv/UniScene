@@ -2,28 +2,28 @@ import numpy as np
 import torch
 import math
 from tqdm import tqdm
-# 编译 CUDA 核函数
+#compile CUDA kernal
 from torch.utils.cpp_extension import load
 from dda3d_gpu import dda3d_gpu
 from dda_cpu import check_rays_cpu
 from check_rays_interp import check_rays_interp
 
-# 函数封装，方便调用
+ 
 def check_rays_cuda(grid, rays, Xmin, Ymin, Zmin, vx, vy, vz):
-    # 获取 grid 的形状和 rays 的数量
+ 
     W, H, D = grid.shape
     num_rays = rays.shape[0]
 
-    # 将数据移动到 GPU 上
+ 
     intersections = torch.zeros(num_rays, dtype=torch.bool, device='cuda')
 
-    # 调用 CUDA 核函数
+ 
     dda3d_gpu(
         rays, grid, intersections,
         Xmin, Ymin, Zmin, vx, vy, vz, W, H, D, num_rays,
     )
 
-    # 返回结果
+ 
     return intersections#.cpu().numpy()
 
 

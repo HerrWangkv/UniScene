@@ -7,7 +7,7 @@ import torch.nn as nn
 class Autoencoder_2D(nn.Module):
     def __init__(self, num_classes=18, expansion=4):
         super(Autoencoder_2D, self).__init__()
-        # 编码器部分
+      
         self.expansion = expansion
         self.num_cls = num_classes
 
@@ -29,10 +29,10 @@ class Autoencoder_2D(nn.Module):
             nn.AvgPool2d(kernel_size=2),  #
         )
 
-        # self.fc_encoder = nn.Linear(1024*2*2, 2048)  # 将特征图展平并压缩到2048个特征
+        # self.fc_encoder = nn.Linear(1024*2*2, 2048)   
 
         # self.fc_decoder = nn.Linear(2048, 1024*4*4)
-        # 解码器部分
+        
         self.decoder = nn.Sequential(
             # nn.ConvTranspose2d(1024, 512, kernel_size=3, stride=2, padding=1, output_padding=0),
             nn.ConvTranspose2d(512, 512, kernel_size=3, stride=2, padding=1, output_padding=1),
@@ -48,7 +48,7 @@ class Autoencoder_2D(nn.Module):
             nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding=1, output_padding=1),
             nn.ReLU(),
             nn.ConvTranspose2d(32, 16 * expansion, kernel_size=3, stride=2, padding=1, output_padding=1),
-            # nn.Sigmoid()  # 激活函数，确保输出在[0, 1]范围内
+            # nn.Sigmoid()  
         )
 
     def forward_encoder(self, x):
@@ -62,7 +62,7 @@ class Autoencoder_2D(nn.Module):
     def forward_decoder(self, z, x_shape):
 
         bs, F, H, W, D = x_shape
-        x = z.reshape(z.size(0), 512, 2, 2)  # 重塑为适合解码器的形状
+        x = z.reshape(z.size(0), 512, 2, 2)  
         x = self.decoder(x)
         # print(x.shape)
         logits = x.permute(0, 2, 3, 1).reshape(-1, D, self.expansion)
@@ -103,7 +103,7 @@ class Autoencoder_2D(nn.Module):
 
 
 if __name__ == "__main__":
-    # 创建模型实例
+ 
     model = Autoencoder_2D()
 
     input_tensor = torch.randint(low=0, high=18, size=(2, 10, 200, 200, 16))

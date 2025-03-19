@@ -2,11 +2,8 @@ import io
 import json
 import os
 import sys
-
 import torch
-
-sys.path.append("/gpfs/shared_files/crosshair/libohan/code_0920/uniscene/video_gen/vwm/data/subsets")
-
+sys.path.append("../data/subsets")
 import numpy as np
 from common import BaseDataset
 from PIL import Image
@@ -108,7 +105,7 @@ class NuScenesDataset(BaseDataset):
 class NuScenesDatasetMVTOSOCC(NuScenesDataset):
     def __init__(
         self,
-        data_root="s3://sdagent-shard-bj-baiducloud/crosshairs/data/nuscenes",
+        data_root="data/nuscenes",
         anno_file="annos/nuScenes_rings.json",
         target_height=320,
         target_width=576,
@@ -116,7 +113,7 @@ class NuScenesDatasetMVTOSOCC(NuScenesDataset):
         version="v1.0-trainval",
         num_cameras=6,
         occ_anno_file="annos/nuScenes_rings_occ_dict_all_complete_zys.json",
-        occ_data_root="s3://sdagent-shard-bj-baiducloud/crosshairs/zouyingshuang-share/tmp/10-13-nksr-render/occ_render_map/train/",
+        occ_data_root="nksr-render/occ_render_map/train/",
         depth_path=["depth_cor", "depth_data"],
         semantic_path=["semantic_color", "semantic"],
     ):
@@ -237,8 +234,7 @@ class NuScenesDatasetMVTOSOCC(NuScenesDataset):
             if sample_dict["speed"]:
                 data_dict["speed"] = torch.tensor(
                     sample_dict["speed"][1:]
-                )  # repeat(torch.tensor(sample_dict["speed"][1:]), "n -> v n", v=num_cameras)
-                # torch.tensor(sample_dict["speed"][1:])
+                )  
             # scene might be empty
             if sample_dict["angle"]:
                 data_dict["angle"] = (
@@ -293,7 +289,6 @@ class NuScenesDatasetMVTOSOCC(NuScenesDataset):
             occ_semantic_seq.append(occ_semantic_seq_mv_stack)
             occ_depth_seq_mv_stack = torch.stack(occ_depth_seq_mv)
             occ_depth_seq.append(occ_depth_seq_mv_stack)
-        # print( "******************:",  occ_semantic_seq_mv_stack.max(), occ_depth_seq_mv_stack.min(), occ_depth_seq_mv_stack.max() )
         return self.build_data_dict(
             image_seq, sample_dict, len(self.cam_names), occ_semantic_seq=occ_semantic_seq, occ_depth_seq=occ_depth_seq
         )
