@@ -9,6 +9,8 @@ pip install ./
 
 ## Data Processing
 
+Download interpolated 12Hz annotation with advanced method from ASAP at [nuscenes_advanced_12Hz_infos.](https://mycuhk-my.sharepoint.com/:u:/g/personal/1155157018_link_cuhk_edu_hk/ESxhblchfaJClyAQ435NE5YBAUb80VTurwPxQbtY9PkIzQ?e=nOaoa1)
+
 ```bash
 # run our quick example
 python render_eval_example.py
