@@ -36,6 +36,7 @@ Generating high-fidelity, controllable, and annotated training data is critical 
  
 
 ### 💥 News
+- [2025/03]: Check out our other latest works on generative world models: [MuDG](https://github.com/heiheishuang/MuDG), [DiST-4D](https://royalmelon0505.github.io/DiST-4D/), [HERMES](https://lmd0311.github.io/HERMES/).
 - [2025/03]: Code and pre-trained weights are released.
 - [2025/02]: Paper is accepted on **CVPR 2025**.
 - [2024/12]: Paper is on the [arxiv](https://arxiv.org/abs/2412.05435).
