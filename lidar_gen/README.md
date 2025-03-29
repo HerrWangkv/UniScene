@@ -34,9 +34,9 @@ Anything about the installation of OpenPCDet, please refer to [OpenPCDet](https:
 python convert_nuscenes_info.py
 ```
 
-4. Download [split mapping files](https://nbeitech-my.sharepoint.com/:u:/g/personal/bli_eitech_edu_cn/EaTyjCQqjMxGr7AWjF49JjMBa1joUVqaMI5Lz_fIezdIpw?e=ogGIYg), put them in `data/split`
+4. Download [split mapping files (nuScenes_occ2lidar_nksr.json)](https://nbeitech-my.sharepoint.com/:u:/g/personal/bli_eitech_edu_cn/EaTyjCQqjMxGr7AWjF49JjMBa1joUVqaMI5Lz_fIezdIpw?e=ogGIYg), put them in `data/split`
 
-5. Prepare occupancy files, put them in `data/nuscenes_occ`
+5. Prepare occupancy files with [Ground-truth Occuancy](https://github.com/Arlo0o/UniScene-Unified-Occupancy-centric-Driving-Scene-Generation/blob/b93bfc98b18c8017d97e8fff1a6bfc4a9d5a2deb/README.md?plain=1#L87) or [Occuancy Generation](https://github.com/Arlo0o/UniScene-Unified-Occupancy-centric-Driving-Scene-Generation/blob/master/occupancy_gen/README.md), put them in `data/nuscenes_occ`
 
 ## Getting Started
 
