@@ -58,6 +58,7 @@ python convert_nuscenes_info.py
     python visualize_nuscenes_lidar.py  --input_dir $input_lidar_path  --save_path  $output_vis_path
 ```
 
+
 ## Acknowledgements
 
 Many thanks to these excellent open source projects:
