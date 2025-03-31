@@ -226,10 +226,10 @@ class CustomDataset_wm_continuous(Dataset):
             occ = label["semantics"]
             occs.append(occ)
 
-            Zmid_file = os.path.join(self.Zmid_root, f"{token}.npz")
-            Zmid = np.load(Zmid_file)
-            Zmid = Zmid["arr_0"]
-            Zmids.append(Zmid)
+            # Zmid_file = os.path.join(self.Zmid_root, f"{token}.npz")
+            # Zmid = np.load(Zmid_file)
+            # Zmid = Zmid["arr_0"]
+            # Zmids.append(Zmid)
 
             Bev_file = os.path.join(self.Bev_root, f"{token}.npz")
             Bev = np.load(Bev_file)
@@ -259,8 +259,9 @@ class CustomDataset_wm_continuous(Dataset):
         data_occ = np.stack(occs).astype(np.int64)
         data_occ = torch.from_numpy(data_occ)
 
-        data_Z = np.stack(Zmids)
-        data_Z = torch.from_numpy(data_Z)
+        data_Z = None
+        # data_Z = np.stack(Zmids)
+        # data_Z = torch.from_numpy(data_Z)
 
         data_Bev = np.stack(Bevs).astype(np.float32)
         data_Bev = torch.from_numpy(data_Bev)

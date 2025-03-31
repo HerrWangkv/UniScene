@@ -20,7 +20,7 @@ import torch.distributed as dist
 from dataload_util import CustomDataset_Tframe_12hz
 from dataset import get_nuScenes_label_name
 from diffusion import create_diffusion
-from diffusion.models import DiT_2Frame, DiT_models
+from diffusion.models import OccDiT
 from download import find_model
 from mmengine import Config
 from mmengine.registry import MODELS
@@ -134,9 +134,8 @@ def main(args):
         "Tframe": Tframe,
     }
 
-    # DiT_cfg={"depth":6, "in_channels":in_ch, "hidden_size":256,"use_label":False, "use_bev_concat":use_bev_concat,"bev_in_ch":1,"bev_out_ch":1,"use_meta":use_occ_meta, "bev_dropout_prob":0.1,"meta_num":meta_num,"direct_concat":True,"Tframe":Tframe}
-    Dit_model = DiT_2Frame(**DiT_cfg).to(device)
-    # Dit_model = DiT_Occsora(**DiT_cfg).to(device)
+    
+    Dit_model = OccDiT(**DiT_cfg).to(device)
 
     ckpt_path = args.ckpt or f"DiT-XL-2-{args.image_size}x{args.image_size}.pt"
     state_dict = find_model(ckpt_path)
@@ -189,17 +188,17 @@ def main(args):
 
     cfg1 = Config.fromfile(args.vae_config)
 
-    my_VQVAE = MODELS.build(cfg1.model)
-    my_VQVAE = my_VQVAE.to(device)
+    OccVAE = MODELS.build(cfg1.model)
+    OccVAE = OccVAE.to(device)
 
     resume_from = args.vae_ckpt
     vae_ckpt = torch.load(resume_from, map_location="cpu")
-    my_VQVAE.load_state_dict(vae_ckpt["state_dict"], strict=True)
+    OccVAE.load_state_dict(vae_ckpt["state_dict"], strict=True)
 
-    # my_VQVAE = DDP(my_VQVAE.to(device), device_ids=[rank])
-    # my_VQVAE = my_VQVAE.to(device)
+    # OccVAE = DDP(OccVAE.to(device), device_ids=[rank])
+    # OccVAE = OccVAE.to(device)
     # # eval
-    my_VQVAE.eval()
+    OccVAE.eval()
 
     # from model_vae.VAE.AE_eval import Autoencoder_2D
     # ae_eval = Autoencoder_2D(num_classes=18,expansion=4)
@@ -246,7 +245,7 @@ def main(args):
             # n_time=z_ori.shape[1]-1
 
             with torch.no_grad():
-                z_ori = my_VQVAE.encode(occ_ori) * scale_factor  # x: B C T H W
+                z_ori = OccVAE.encode(occ_ori) * scale_factor  # x: B C T H W
 
             z = z_ori
 
@@ -308,9 +307,9 @@ def main(args):
 
             rec_shape = [bz, Tframe, 200, 200, 16]
             if use_vq == False:
-                result = my_VQVAE.generate(samples, rec_shape)
+                result = OccVAE.generate(samples, rec_shape)
             else:
-                result = my_VQVAE.generate_vq(samples, rec_shape)
+                result = OccVAE.generate_vq(samples, rec_shape)
             logit = result["logits"]
             pred = logit.argmax(dim=-1)  #  200, 200, 16
 
@@ -372,7 +371,6 @@ def main(args):
 if __name__ == "__main__":
     # Default args here will train DiT-XL/2 with the hyperparameters we used in our paper (except training iters).
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, choices=list(DiT_models.keys()), default="DiT-XL/2")
     parser.add_argument("--image-size", type=int, choices=[256, 128], default=256)
     parser.add_argument("--num-classes", type=int, default=1000)
     parser.add_argument("--epochs", type=int, default=1)

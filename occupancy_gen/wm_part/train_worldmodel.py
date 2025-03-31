@@ -143,6 +143,7 @@ def main(args):
     # meta_num= 4*Tframe + 12*(Tframe-1)
     meta_num = 4 + 12 * (T_pred - 1)
     use_noise_prior = False
+     scale_factor = 70
     # bev_ch_use=[0,2,5,6,8,9,10,11,12,13,14,15,16,17]
     bev_ch_use = [0, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
 
@@ -195,19 +196,19 @@ def main(args):
 
     diffusion = create_diffusion(timestep_respacing="")  # default: 1000 steps, linear noise schedule
 
-    # import model_vae
-    # cfg = Config.fromfile(args.vae_config)
-    # vae = MODELS.build(cfg.model)
-    # vae_ckpt = torch.load(args.vae_ckpt,map_location='cpu')
-    # vae.load_state_dict(vae_ckpt['state_dict'], strict=True)
-    # vae = vae.to(device)
+    import model_vae
+    cfg = Config.fromfile(args.vae_config)
+    OccVAE  = MODELS.build(cfg.model)
+    vae_ckpt = torch.load(args.vae_ckpt,map_location='cpu')
+    OccVAE.load_state_dict(vae_ckpt['state_dict'], strict=True)
+    OccVAE = OccVAE.to(device)
 
     model = DDP(model.to(device), device_ids=[rank], find_unused_parameters=True)
 
     logger.info(f"DiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
     imageset = "data/nuscenes_infos_train_temporal_v3_scene.pkl"
-    file1_path = "./step2/train/Zmid_4_me/"
+    file1_path = "./step2/train/Zmid_4_me/"  # Preprocessed Occ latent from OccVAE, deprecated
     file2_path = "./step2/train/bevmap_4/"
     gts_path = "data/nuscenes/gts"
 
@@ -253,8 +254,10 @@ def main(args):
         sampler.set_epoch(epoch)
         logger.info(f"Beginning epoch {epoch}...")
         for x_all, y_all, occ_all, occ_meta_all, pose_meta_all in tqdm(loader):
-            # for occ_ori,y,occ_meta,pose_meta in tqdm(loader):
-            # occ_ori = occ_ori.to(device)
+            
+            with torch.no_grad(): 
+                x_all=OccVAE.encode(occ_all) * scale_factor
+
             x = x_all[:, T_condition:]
             x_ref = x_all[:, :T_condition]
             y = y_all[:, T_condition:]
@@ -267,12 +270,10 @@ def main(args):
             pose_meta = pose_meta_all[:, T_condition:]
             # ref_idx = random.randint(0, Tframe-1)
 
-            # with torch.no_grad():
-            #     x=vae.encode(occ_ori) * 50 # x: B C T H W  *20 make std = 1
 
             ref_idx = 0
-            x = x.to(device) * 70  # 50
-            x_ref = x_ref.to(device) * 70  # 50
+            # x = x.to(device) * 70  # 50
+            # x_ref = x_ref.to(device) * 70  # 50
 
             x = x.permute(0, 2, 1, 3, 4)
             x_ref = x_ref.permute(0, 2, 1, 3, 4)

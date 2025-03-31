@@ -120,8 +120,7 @@ def main(args):
         "T_pred": T_pred,
         "T_condition": T_condition,
     }
-    # DiT_cfg={"depth":6, "in_channels":in_ch, "hidden_size":512,"use_label":False, "use_bev_concat":use_bev_concat,"bev_in_ch":1,"bev_out_ch":1,"use_meta":use_occ_meta, "bev_dropout_prob":0.1,"meta_num":meta_num,"direct_concat":True,"T_pred":T_pred,"T_condition":T_condition}
-    # model = DiT_Occsora(**DiT_cfg).to(device)
+    
     Dit_model = DiT_WorldModel(**DiT_cfg).to(device)
 
     ckpt_path = args.ckpt or f"DiT-XL-2-{args.image_size}x{args.image_size}.pt"
@@ -143,7 +142,7 @@ def main(args):
     # logger.info(f"DiT Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
     imageset = "data/nuscenes_infos_val_temporal_v3_scene.pkl"
-    file1_path = "./step2/val/Zmid_4_me/"
+    file1_path = "./step2/val/Zmid_4_me/"  # Preprocessed Occ latent from OccVAE, deprecated
     file2_path = "./step2/val/bevmap_4/"
     gts_path = "data/nuscenes/gts"
 
@@ -177,17 +176,17 @@ def main(args):
 
     cfg1 = Config.fromfile(args.vae_config)
 
-    my_VQVAE = MODELS.build(cfg1.model)
-    my_VQVAE = my_VQVAE.to(device)
+    OccVAE = MODELS.build(cfg1.model)
+    OccVAE = OccVAE.to(device)
 
     resume_from = args.vae_ckpt
     vae_ckpt = torch.load(resume_from, map_location="cpu")
-    my_VQVAE.load_state_dict(vae_ckpt["state_dict"], strict=True)
+    OccVAE.load_state_dict(vae_ckpt["state_dict"], strict=True)
 
-    # my_VQVAE = DDP(my_VQVAE.to(device), device_ids=[rank])
-    # my_VQVAE = my_VQVAE.to(device)
+    # OccVAE = DDP(OccVAE.to(device), device_ids=[rank])
+    # OccVAE = OccVAE.to(device)
     # # eval
-    my_VQVAE.eval()
+    OccVAE.eval()
 
     from model_vae.VAE.AE_eval import Autoencoder_2D
 
@@ -231,6 +230,9 @@ def main(args):
                 if i_iter_val not in scene_idx and vis == True:
                     continue
 
+                with torch.no_grad(): 
+                    x_all=OccVAE.encode(occ_all) * scale_factor
+
                 # x = x_all[:,T_condition:]
                 x_ref = x_all[:, :T_condition]
                 y = y_all[:, T_condition:]
@@ -245,13 +247,13 @@ def main(args):
                 pose_meta = pose_meta_all[:, T_condition:]
 
                 # x = x.to(device) * scale_factor
-                x_ref = x_ref.to(device) * scale_factor
+                # x_ref = x_ref.to(device) * scale_factor
 
                 # z = x.permute(0,2,1,3,4)
                 z_ref = x_ref.permute(0, 2, 1, 3, 4)
 
                 # with torch.no_grad():
-                #     z_ori=my_VQVAE.encode(occ_ori) *scale_factor # x: B C T H W
+                #     z_ori=OccVAE.encode(occ_ori) *scale_factor # x: B C T H W
 
                 # z_ori_s = z_ori[:,:,0].unsqueeze(2) #
                 # z_ori_s = z_ori[:,:,ref_idx].unsqueeze(2) #
@@ -313,9 +315,9 @@ def main(args):
 
                 rec_shape = [bz, T_pred, 200, 200, 16]
                 if use_vq == False:
-                    result = my_VQVAE.generate(samples, rec_shape)
+                    result = OccVAE.generate(samples, rec_shape)
                 else:
-                    result = my_VQVAE.generate_vq(samples, rec_shape)
+                    result = OccVAE.generate_vq(samples, rec_shape)
                 logit = result["logits"]
                 pred = logit.argmax(dim=-1)  #  200, 200, 16
 
