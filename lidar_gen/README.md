@@ -12,10 +12,14 @@ conda create -n uniscene python=3.9
 
 2. Install all the packages with requirements.txt
 
-3. Install OpenPCDet
+3. Install OpenPCDet and dda
 
 ```
     cd pcdet && pip install -e . -v
+```
+
+```
+    cd pcdet/datasets/nuscenes_occ/utils/dda && pip install . -v
 ```
 
 Anything about the installation of OpenPCDet, please refer to [OpenPCDet](https://github.com/open-mmlab/OpenPCDet).
