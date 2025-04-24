@@ -50,13 +50,19 @@ python convert_nuscenes_info.py
     python tools/test.py --save_to_file  $output_path  --ckpt_dir  $lidar_pretrain
 ```
 
-2. Costumed Inference Demo
+2. Evaluation on nuScenes validation set
+
+```
+    python lidar_gen/pcdet/datasets/nuscenes_occ/eval_utils/eval_mmd_jsd_gpu_batch.py $gt_path $pred_path
+```
+
+3. Costumed Inference Demo
 
 ```
     python tools/demo.py --occ_file  $input_occupancy_path  --ckpt_dir $lidar_pretrain_path
 ```
 
-3. Visulization of LiDAR Point Clouds
+4. Visulization of LiDAR Point Clouds
 
 ```
     python visualize_nuscenes_lidar.py  --input_dir $input_lidar_path  --save_path  $output_vis_path

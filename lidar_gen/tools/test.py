@@ -11,7 +11,7 @@ from pcdet.datasets import build_dataloader
 from pcdet.models import build_network
 from pcdet.utils import common_utils
 
-CFG = "tools/cfgs/nuscenes_occ_models/occ2lidar_sparseunet_renderv2_s_priorsampler_p54_r200_intenw10_raydropw02.yaml"
+CFG = "tools/cfgs/nuscenes_occ_models/occ2lidar_sparseunet_renderv2_s_priorsampler_p54_r200_intenw10_raydropw02_prerays.yaml"
 CKPT = "checkpoints/occ2lidar.pth"
 BATCH_SIZE = 2  # reduce if out of memory
 WORK_DIR = f"exps/uniscenes-occ2lidar"

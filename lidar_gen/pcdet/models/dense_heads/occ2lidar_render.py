@@ -238,11 +238,8 @@ class Occ2LiDARRender(nn.Module):
 
         for bs in range(batch_size):
             uni_feats.append(pts_feats[bs])
-        
-        if self.use_predefine_rays:
-            rays = self.sample_rays(batch_size)
-            lidar_rays, _ = rays
-        else:
+
+        if 'points' in batch_dict:
             pts_all = batch_dict['points']
             occ_grids = batch_dict.get('grid', None)
             pts = []
@@ -251,11 +248,17 @@ class Occ2LiDARRender(nn.Module):
                 batch_mask = pts_all[:, 0].int()==bs
                 pts.append(pts_all[batch_mask][:, 1:6])
                 did_returns.append(batch_dict['did_return'][batch_mask][:, 1].bool())
+
+        if self.use_predefine_rays:
+            rays = self.sample_rays(batch_size)
+            lidar_rays, _ = rays
+        else: # need gt points to provide ray directions
             rays = self.sample_rays(batch_size, pts, did_returns, occ_grids=occ_grids)
             lidar_rays, _ = rays
+            
         self.forward_ret_dict['targets'] = lidar_rays
 
-        if self.render_model.pred_raydrop and self.training:
+        if self.render_model.pred_raydrop and ('points' in batch_dict):
             for bs_idx in range(batch_size):
                 dis = torch.norm(pts[bs_idx][:, :3], p=2, dim=-1)
                 dis_mask = (dis > self.ray_sampler_cfg.close_radius) & (
