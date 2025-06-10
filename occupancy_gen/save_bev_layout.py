@@ -11,6 +11,7 @@ from mmengine.logging import MMLogger
 from mmengine.registry import MODELS
 from mmengine.runner import set_random_seed
 from tqdm import tqdm
+import model_vae
 
 warnings.filterwarnings("ignore")
 

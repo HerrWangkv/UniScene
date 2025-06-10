@@ -18,7 +18,7 @@ optimizer = dict(
     ),
 )
 
-data_path = "data/nuscenes/"
+data_path = "data/"
 
 
 train_dataset_config = dict(
@@ -26,7 +26,7 @@ train_dataset_config = dict(
     data_path=data_path,
     return_len=return_len_,
     offset=0,
-    nusc_dataroot=None,  #'data/nuscenes',
+    nusc_dataroot="data/nuscenes",
     imageset="data/nuscenes_infos_train_temporal_v3_scene.pkl",
 )
 
@@ -35,7 +35,7 @@ val_dataset_config = dict(
     data_path=data_path,
     return_len=return_len_,
     offset=0,
-    nusc_dataroot=None,  #'data/nuscenes',
+    nusc_dataroot="data/nuscenes",
     imageset="data/nuscenes_infos_val_temporal_v3_scene.pkl",
 )
 
