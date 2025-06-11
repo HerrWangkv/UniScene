@@ -28,7 +28,7 @@ conda create -n uniscene python=3.9
 
 3. Download [checkpoint](https://nbeitech-my.sharepoint.com/:f:/g/personal/bli_eitech_edu_cn/EpYIjg5_l2VFoYJd2vZcl9wBFeVQV1XI_NPQQhXOB-wUqQ?e=I3vmYQ) and put them in "./ckpt/".
 
-4. (Optional) Prepare 12HZ BEV maps.
+4. Prepare 2HZ BEV maps.
 
 ```
 python save_bev_layout.py \

@@ -61,12 +61,15 @@ RUN conda install pytorch=2.5.1=py3.9_cuda12.1_cudnn9.1.0_0 torchvision  -c pyto
 # Install other dependencies
 RUN pip install -U openmim && \
     mim install mmcv==2.1.0 && \
-    pip install --no-cache-dir setuptools==65.5.0 poetry yapf==0.40.1 shapely==1.8.5
+    pip install --no-cache-dir setuptools==65.5.0 poetry
 
 # Copy project files if they exist
 WORKDIR /workspace
 COPY . /workspace
 RUN poetry install --no-root
+
+# Then force reinstall the specific versions you need with --no-deps
+RUN pip install --no-cache-dir --force-reinstall --no-deps yapf==0.40.1 shapely==1.8.5
 
 # Build lidar_gen
 RUN cd lidar_gen && pip install -e . -v && cd ..
@@ -78,7 +81,7 @@ RUN cd video_gen/gs_render/diff-gaussian-rasterization && pip install ./ && cd .
 RUN cd third_party/chamferdist && python setup.py install && cd ../../
 
 # (Optional) Install mayavi and related visualization dependencies
-RUN pip install vtk==9.0.2 PyQt5==5.15.10 PyQt5-sip && \
+RUN pip install vtk==9.0.2 PyQt5==5.15.10 PyQt5-sip imageio-ffmpeg && \
     pip install --no-cache-dir mayavi==4.7.3
 
 # Set PYTHONPATH
@@ -88,7 +91,11 @@ ENV PYTHONPATH=/workspace
 COPY entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh && \
     echo "source /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
-    echo "conda activate uniscene" >> ~/.bashrc
+    echo "conda activate uniscene" >> ~/.bashrc && \
+    echo "export DISPLAY=:1" >> ~/.bashrc && \
+    echo "export QT_QPA_PLATFORM=offscreen" >> ~/.bashrc && \
+    echo "export ETS_TOOLKIT=qt" >> ~/.bashrc && \
+    echo "export QT_API=pyqt5" >> ~/.bashrc
 
 # Use entrypoint script
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

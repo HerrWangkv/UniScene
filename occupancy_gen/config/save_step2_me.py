@@ -40,12 +40,12 @@ val_dataset_config = dict(
 )
 
 train_wrapper_config = dict(
-    type="tpvformer_dataset_nuscenes_step2_wobev",
+    type="tpvformer_dataset_nuscenes_step2",
     phase="train",
 )
 
 val_wrapper_config = dict(
-    type="tpvformer_dataset_nuscenes_step2_wobev",
+    type="tpvformer_dataset_nuscenes_step2",
     phase="val",
 )
 
