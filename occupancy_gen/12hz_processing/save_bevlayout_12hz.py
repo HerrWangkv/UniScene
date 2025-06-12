@@ -398,15 +398,15 @@ class nuScenesSceneDatasetLidar_12hz_saveBEV(Dataset):
 def main():
     parser = argparse.ArgumentParser(description="Quantize and resample labels.")
     parser.add_argument("--s_p", type=int, default=0)
-    parser.add_argument("--e_p", type=int, default=10)
+    parser.add_argument("--e_p", type=int, default=100)
     parser.add_argument(
-        "--imageset", type=str, default="./data/nuscenes_mmdet3d-12Hz/nuscenes_advanced_12Hz_infos_val.pkl"
+        "--imageset", type=str, default="./data/nuscenes_mmdet3d-12Hz/nuscenes_advanced_12Hz_infos_train.pkl"
     )
     args = parser.parse_args()
 
     imageset = args.imageset
     nusc_dataroot = "./data/nuscenes"
-    tmp_save_root = "12hz_bevlayout_200_200"
+    tmp_save_root = "./data/12hz_bevlayout_200_200"
     dataset = nuScenesSceneDatasetLidar_12hz_saveBEV(
         imageset=imageset, nusc_dataroot=nusc_dataroot, s_p=args.s_p, e_p=args.e_p
     )

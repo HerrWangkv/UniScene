@@ -48,10 +48,11 @@ Generating high-fidelity, controllable, and annotated training data is critical 
 
 
 #### 1. Data & Model Preparation
-- Download the [NuScenes](https://www.nuscenes.org/) dataset and place it in the `/storage_local/kwang/UniScene_data/nuscenes` directory.
-- Download the [adv_12Hz.tar](https://mycuhk-my.sharepoint.com/:u:/g/personal/1155157018_link_cuhk_edu_hk/ESxhblchfaJClyAQ435NE5YBAUb80VTurwPxQbtY9PkIzQ?e=nOaoa1) and extract it with `tar -xf adv_12Hz.tar` in the `/storage_local/kwang/UniScene_data` directory. Note that the `lidarseg.json` and `category.json` also need to be adapted for version `advanced_12Hz_trainval`, and also `mv nuscenes/lidarseg/v1.0-trainval nuscenes/lidarseg/advanced_12Hz_trainval/`
-- Download the interpolated 12Hz annotation and mmdet3d meta data on ["nuscenes_interp_12Hz_infos_*.pkl"](https://mycuhk-my.sharepoint.com/:u:/g/personal/1155157018_link_cuhk_edu_hk/EXunN1j0OmNLtaPoh2VrkgQBGpyXiMlltuCX5GBuYc00YQ?e=bVI9AC) and put them in the `/storage_local/kwang/UniScene_data` directory.
-- Download the [gts semantic occupancy](https://drive.google.com/file/d/17HubGsfioQr1d_39VwVPXelobAFo4Xqh/view?usp=drive_link) in `/storage_local/kwang/UniScene_data/occ`, which is introduced in [Occ3d](https://github.com/Tsinghua-MARS-Lab/Occ3D)
+- Download the [NuScenes](https://www.nuscenes.org/) dataset and place it in the `/storage_local/kwang/UniScene_data/data/nuscenes` directory.
+- Download the [adv_12Hz.tar](https://mycuhk-my.sharepoint.com/:u:/g/personal/1155157018_link_cuhk_edu_hk/ESxhblchfaJClyAQ435NE5YBAUb80VTurwPxQbtY9PkIzQ?e=nOaoa1) and extract it with `tar -xf adv_12Hz.tar` in the `/storage_local/kwang/UniScene_data/` directory. Note that the `lidarseg.json` and `category.json` also need to be adapted for version `advanced_12Hz_trainval`, and also `mv nuscenes/lidarseg/v1.0-trainval nuscenes/lidarseg/advanced_12Hz_trainval/`
+- Download the interpolated 12Hz annotation and mmdet3d meta data on ["nuscenes_interp_12Hz_infos_*.pkl"](https://mycuhk-my.sharepoint.com/:u:/g/personal/1155157018_link_cuhk_edu_hk/EXunN1j0OmNLtaPoh2VrkgQBGpyXiMlltuCX5GBuYc00YQ?e=bVI9AC) and put them in the `/storage_local/kwang/UniScene_data/data` directory.
+- Download the [gts semantic occupancy](https://drive.google.com/file/d/17HubGsfioQr1d_39VwVPXelobAFo4Xqh/view?usp=drive_link) in `/storage_local/kwang/UniScene_data/data/occ`, which is introduced in [Occ3d](https://github.com/Tsinghua-MARS-Lab/Occ3D)
+- Download the [video_pickle_data.pkl](https://nbeitech-my.sharepoint.com/personal/bli_eitech_edu_cn/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fbli%5Feitech%5Fedu%5Fcn%2FDocuments%2Fdata%2Funiscene%2Fvideo%5Fpickle%5Fdata%2Epkl&parent=%2Fpersonal%2Fbli%5Feitech%5Fedu%5Fcn%2FDocuments%2Fdata%2Funiscene&ga=1) file to `/storage_local/kwang/UniScene_data/data`, which is used for video generation.
 - Download [checkpoint](https://nbeitech-my.sharepoint.com/:f:/g/personal/bli_eitech_edu_cn/EpYIjg5_l2VFoYJd2vZcl9wBFeVQV1XI_NPQQhXOB-wUqQ?e=I3vmYQ) and put them in `/storage_local/kwang/UniScene_data/ckpt`.
 
 #### 2. Environment Setup
@@ -61,7 +62,7 @@ docker build  -t uniscene:local .
 bash run_docker.sh
 ```
 
-#### 3. 2Hz
+#### 3. 2Hz (Optional)
 - Prepare 2Hz BEV Layouts: This generates the 2Hz BEV maps for the occupancy generation under `./data/step2`.
 
     ```bash
@@ -76,10 +77,28 @@ bash run_docker.sh
     ```
 
 #### 4. 12Hz
-- Prepare 12HZ 3D Occupancy Labels with LiDAR and 3D bbox labels:
+- Prepare 12HZ 3D Occupancy Labels with LiDAR and 3D bbox labels: This generates the 12Hz occupancy labels for the occupancy generation under `./data/dense_voxels_with_semantic`.
 
     ```bash
     docker build -t uniscene-nksr -f Dockerfile.nksr .
     bash run_docker_nksr.sh
     python data_process/generate_occ.py
     ```
+- Prepare 12Hz BEV Layouts: This generates the 12Hz BEV maps for the occupancy generation under `./12hz_bevlayout_200_200`.
+
+    ```bash
+    python occupancy_gen/12hz_processing/save_bevlayout_12hz.py
+    ```
+- 12Hz keyframe Occupancy Inference on nuScenes validation set: This generates occs under `./gen_occ/200_infer12hz_occ3d`
+
+    ```bash
+    export PYTHONPATH=occupancy_gen/
+    CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --nnodes=1 --nproc_per_node=4 occupancy_gen/12hz_processing/eval_12hz_with_occ3d.py --vis
+    ```
+
+#### 5. Video Generation
+
+```bash
+python video_gen/gs_render/render_eval_condition_gt.py --vis
+python video_gen/inference_video.py
+```

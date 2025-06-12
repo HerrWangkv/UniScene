@@ -154,9 +154,9 @@ def main(args):
 
     Dit_model = DDP(Dit_model.to(device), device_ids=[rank])
 
-    imageset = "./data/nuscenes_mmdet3d-12Hz/nuscenes_advanced_12Hz_infos_val.pkl"
-    occ_base_path = "./dense_voxels_with_semantic/"
-    bev_path = "./12hz_bevlayout_200_200"
+    imageset = "./data/nuscenes_mmdet3d-12Hz/nuscenes_advanced_12Hz_infos_train.pkl"
+    occ_base_path = "./data/dense_voxels_with_semantic/"
+    bev_path = "./data/12hz_bevlayout_200_200"
     gen_occ_save_path = "./gen_occ/200_infer12hz_occ3d"
     dataset = CustomDataset_Tframe_12hz(
         imageset, occ_base_path, bev_path, bev_ch_use, meta_num=4, Tframe=Tframe, use_clip=True, return_token=True
@@ -169,7 +169,11 @@ def main(args):
     if vis:
         bz = 1
     sampler = DistributedSampler(
-        dataset, num_replicas=dist.get_world_size(), rank=rank, shuffle=True, seed=args.global_seed
+        dataset,
+        num_replicas=dist.get_world_size(),
+        rank=rank,
+        shuffle=False,
+        seed=args.global_seed,
     )
     loader = DataLoader(
         dataset,
@@ -377,7 +381,7 @@ if __name__ == "__main__":
     parser.add_argument("--global-batch-size", type=int, default=4)
     parser.add_argument("--global-seed", type=int, default=0)
     parser.add_argument("--vae", type=str, choices=["ema", "mse"], default="ema")  # Choice doesn't affect training
-    parser.add_argument("--num-workers", type=int, default=4)
+    parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--cfg-scale", type=float, default=4.0)
     parser.add_argument("--in_ch", type=int, default=4)
     # parser.add_argument("--log-every", type=int, default=500)
@@ -386,7 +390,9 @@ if __name__ == "__main__":
     parser.add_argument("--vis", action="store_true", default=False)
     # parser.add_argument("--local_rank", type=int,default=0)
     parser.add_argument("--vae_ckpt", type=str, default="ckpt/VAE/epoch_296.pth")
-    parser.add_argument("--vae_config", type=str, default="config/train_vae_4_DwT_L_me.py")
+    parser.add_argument(
+        "--vae_config", type=str, default="occupancy_gen/config/train_vae_4_DwT_L_me.py"
+    )
     parser.add_argument("--ae_ckpt", type=str, default="ckpt/AE_eval/epoch_196.pth")
     parser.add_argument("--lambda_noise_prior", type=float, default=0.05)
     # parser.add_argument('--py-config', default='./config/train_vqvae_4.py')

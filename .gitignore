@@ -7,3 +7,6 @@ __pycache__
 data
 gen_occ
 ckpt
+None
+*.txt
+core

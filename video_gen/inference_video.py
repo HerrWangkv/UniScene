@@ -22,8 +22,8 @@ from torchvision import transforms
 
 VERSION2SPECS = {
     "vwm": {
-        "config": "configs/example/nusc_mv.yaml",
-        "ckpt": "ckpts/video_pretrained.safetensors",
+        "config": "video_gen/configs/example/nusc_mv.yaml",
+        "ckpt": "ckpt/video_pretrained.safetensors",
     }
 }
 
@@ -62,7 +62,7 @@ def parse_args(**parser_kwargs):
     parser.add_argument(
         "--occ_data_root",
         type=str,
-        default="None",
+        default="data/occ_render_map/",
     )
 
     parser.add_argument("--annos", type=str, default="video_pickle_file.pkl", help="number of frames for each round")
@@ -151,11 +151,17 @@ def get_sample(
 
                     occ_semantic_paths = os.path.join(
                         occ_data_root,
-                        occ_samples[sample_dict["frames"][cam_names[i]][index]],
+                        occ_samples[sample_dict["frames"][cam_names[i]][index]].split(
+                            "/"
+                        )[0],
                         semantic_path[1] + ".npz",
                     )
                     occ_depth_paths = os.path.join(
-                        occ_data_root, occ_samples[sample_dict["frames"][cam_names[i]][index]], depth_path[1] + ".npz"
+                        occ_data_root,
+                        occ_samples[sample_dict["frames"][cam_names[i]][index]].split(
+                            "/"
+                        )[0],
+                        depth_path[1] + ".npz",
                     )
                     ring_pose_path.append(get_pose(frame_path=os.path.join(*image_path.split("/")[-3:])))
                     ring_image_path.append(image_path)
@@ -221,10 +227,14 @@ def load_img(
             if flag == "image":
                 image = Image.open(io.BytesIO(image_data))
             elif flag == "semantic":
-                image = np.load(io.BytesIO(image_data), allow_pickle=True)[current_cam_name]
+                image = np.load(io.BytesIO(image_data), allow_pickle=True)["arr_0"][
+                    current_cam_name
+                ]
                 image = Image.fromarray(np.array(image, dtype=np.uint8))
             elif flag == "depth":
-                image = np.load(io.BytesIO(image_data), allow_pickle=True)[current_cam_name]
+                image = np.load(io.BytesIO(image_data), allow_pickle=True)["arr_0"][
+                    current_cam_name
+                ]
                 image = Image.fromarray(np.array(image, dtype=np.uint8))
 
         if not image.mode == "RGB":
@@ -279,9 +289,23 @@ if __name__ == "__main__":
     model = init_model(version_dict)
     unique_keys = set([x.input_key for x in model.conditioner.embedders])
 
-    sample_index = 500
+    sample_index = 0
     count_index = 500
     while sample_index >= 0:
+        # try:
+        #     occ_semantic_paths = os.path.join(
+        #         opt.occ_data_root,
+        #         occ_samples[anno_file[sample_index]["frames"][cam_names[0]][0]].split(
+        #             "/"
+        #         )[0],
+        #         "semantic.npz",
+        #     )
+        # except IndexError:
+        #     breakpoint()
+        # if not os.path.exists(occ_semantic_paths):
+        #     print(f"Skipping sample {sample_index} due to missing semantic data.")
+        #     sample_index += 1
+        #     continue
         seed_everything(opt.seed)
 
         (

@@ -197,28 +197,36 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument("--index_list", nargs="+", type=int, default=[0])
-    parser.add_argument("--dataset_path", type=str, default="./data/nuScenes/")
-    parser.add_argument("--occ_path", type=str, default="./data/occ_data/")
-    parser.add_argument("--layout_path", type=str, default="./data/layout/")
+    parser.add_argument("--s_p", type=int, default=0)
+    parser.add_argument("--e_p", type=int, default=100)
+    parser.add_argument(
+        "--dataset_path", type=str, default="./data/nuscenes_mmdet3d-12Hz"
+    )
+    parser.add_argument(
+        "--occ_path", type=str, default="./gen_occ/200_infer12hz_occ3d/"
+    )
+    parser.add_argument(
+        "--layout_path", type=str, default="./data/12hz_bevlayout_200_200/"
+    )
     parser.add_argument("--render_path", type=str, default="./data/occ_render_map/")
     parser.add_argument("--vis", action="store_true")
 
     args = parser.parse_args()
 
     # render train data
-    train_pkl_path = os.path.join(args.dataset_path, "nuscenes_advanced_12Hz_infos_val.pkl")
-    render_base_path = os.path.join(args.render_path, "val")
-    occ_base_path = os.path.join(args.occ_path, "val")
-    layout_base_path = os.path.join(args.layout_path, "val")
+    train_pkl_path = os.path.join(
+        args.dataset_path, "nuscenes_advanced_12Hz_infos_train.pkl"
+    )
+    render_base_path = os.path.join(args.render_path)
+    occ_base_path = os.path.join(args.occ_path)
+    layout_base_path = os.path.join(args.layout_path)
 
     data = pickle.load(open(train_pkl_path, "rb"))
     items_data = data["infos"]
 
     all_train_items = len(items_data)
-    index_list = args.index_list
 
-    for index in index_list:
+    for index in range(args.s_p, args.e_p):
         try:
             item = items_data[index]
             render_occ_semantic_map(
