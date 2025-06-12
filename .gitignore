@@ -5,6 +5,5 @@ build
 .vscode
 __pycache__
 data
-occupancy_gen/gen_occ
-occupancy_gen/ckpt
-occupancy_gen/data
+gen_occ
+ckpt

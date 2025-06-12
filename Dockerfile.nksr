@@ -1,0 +1,90 @@
+# syntax=docker/dockerfile:1
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
+
+# Set non-interactive mode for apt
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set environment variables
+ENV CUDA_HOME=/usr/local/cuda \
+    LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH \
+    PATH=/usr/local/cuda/bin:$PATH \
+    TORCH_CUDA_ARCH_LIST="7.0;7.5;8.0;8.6" \
+    FORCE_CUDA=1
+
+# Set UTF-8 encoding globally
+ENV PYTHONIOENCODING=utf-8
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    git \
+    build-essential \
+    ninja-build \
+    libglib2.0-0 \
+    libsm6 \
+    libxrender1 \
+    libxext6 \
+    libgl1-mesa-glx \
+    python3.9 \
+    python3.9-dev \
+    python3.9-distutils \
+    python3-pip \
+    python3-setuptools \
+    software-properties-common \
+    && rm -rf /var/lib/apt/lists/*
+
+# Update alternatives for Python
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1 \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3.9 1
+
+# Install pip
+RUN wget https://bootstrap.pypa.io/get-pip.py && \
+    python get-pip.py && \
+    rm get-pip.py
+
+# Create a new virtual environment for NKSR
+RUN pip install --no-cache-dir virtualenv && \
+    python -m virtualenv /opt/nksr_env
+
+# Set up the environment
+ENV PATH="/opt/nksr_env/bin:$PATH"
+
+# Install PyTorch and related packages
+RUN pip install --no-cache-dir \
+    torch==2.0.0 \
+    torchvision==0.15.1 \
+    torchaudio==2.0.1 \
+    --extra-index-url https://download.pytorch.org/whl/cu118
+
+# Install NKSR
+RUN pip install --no-cache-dir nksr -f https://nksr.huangjh.tech/whl/torch-2.0.0+cu118.html
+
+# Install torch-scatter (required for point cloud processing)
+RUN pip install torch-scatter -f https://data.pyg.org/whl/torch-2.0.0+cu118.html
+
+# Install OpenMIM and MMCV as per install.md
+RUN pip install --no-cache-dir -U openmim && \
+    mim install mmcv==2.1.0
+
+# Install other dependencies required for the script
+RUN pip install --no-cache-dir \
+    numpy==1.23.5 \
+    pyyaml \
+    open3d \
+    pyquaternion \
+    scipy
+
+# Install nuscenes-devkit
+RUN pip install --no-cache-dir nuscenes-devkit
+
+# Set working directory
+WORKDIR /workspace
+
+# Copy chamferdist and install it
+COPY third_party/chamferdist /workspace/chamferdist
+RUN cd /workspace/chamferdist && \
+    python3 setup.py install
+
+CMD ["/bin/bash"]

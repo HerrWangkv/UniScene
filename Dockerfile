@@ -80,6 +80,9 @@ RUN cd video_gen/gs_render/diff-gaussian-rasterization && pip install ./ && cd .
 # Build third_party/chamferdist
 RUN cd third_party/chamferdist && python setup.py install && cd ../../
 
+# Install nksr
+RUN pip install nksr
+
 # (Optional) Install mayavi and related visualization dependencies
 RUN pip install vtk==9.0.2 PyQt5==5.15.10 PyQt5-sip imageio-ffmpeg && \
     pip install --no-cache-dir mayavi==4.7.3

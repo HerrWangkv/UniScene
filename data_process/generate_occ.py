@@ -506,8 +506,9 @@ def main(nusc, indice, nuscenesyaml, args, config):
 
         # dirs = os.path.join(save_path, 'dense_voxels_with_semantic/')
         dirs = smart_path_join(save_path, "dense_voxels_with_semantic/")
-        if not os.path.exists(dirs):
-            os.makedirs(dirs)
+        sample_data_path = smart_path_join(dirs, dict["sample_token"])
+        if not os.path.exists(sample_data_path):
+            os.makedirs(sample_data_path)
         # np.save(os.path.join(dirs, dict['pc_file_name'] + '.npy'), dense_voxels_with_semantic)
         lidar_data_path = smart_path_join(dirs, dict["sample_token"], dict["lidar_token"] + ".npy")
         with open(lidar_data_path, "wb") as f:
@@ -530,10 +531,12 @@ if __name__ == "__main__":
 
     parse = ArgumentParser()
     parse.add_argument("--dataset", type=str, default="nuscenes")
-    parse.add_argument("--config_path", type=str, default="./data_process/config-800.yaml")
+    parse.add_argument(
+        "--config_path", type=str, default="./data_process/config-200.yaml"
+    )
     parse.add_argument("--split", type=str, default="val")
-    parse.add_argument("--save_path", type=str, default="./data/GT_occupancy/")
-    parse.add_argument("--dataroot", type=str, default="./data/nuScenes/")
+    parse.add_argument("--save_path", type=str, default="./data")
+    parse.add_argument("--dataroot", type=str, default="./data/nuscenes")
     parse.add_argument("--label_mapping", type=str, default="./data_process/nuscenes.yaml")
     parse.add_argument("--index_list", nargs="+", type=int)
     # <details>
@@ -571,7 +574,7 @@ if __name__ == "__main__":
     index_list = args.index_list
 
     for index in index_list:
-        print("processing sequecne:", index)
+        print("processing sequence:", index)
         try:
             main(nusc, indice=index, nuscenesyaml=nuscenesyaml, args=args, config=config)
         except Exception as e:

@@ -139,4 +139,4 @@ model = dict(
 shapes = [[200, 200], [100, 100], [50, 50], [25, 25]]
 
 unique_label = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-label_mapping = "./config/label_mapping/nuscenes-occ.yaml"
+label_mapping = "./occupancy_gen/config/label_mapping/nuscenes-occ.yaml"

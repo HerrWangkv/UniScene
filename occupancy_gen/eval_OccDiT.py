@@ -355,7 +355,9 @@ if __name__ == "__main__":
     parser.add_argument("--ckpt", type=str, default="ckpt/DiT/0600000.pt")
     parser.add_argument("--vis", action="store_true", default=False)
     parser.add_argument("--vae_ckpt", type=str, default="ckpt/VAE/epoch_296.pth")
-    parser.add_argument("--vae_config", type=str, default="config/train_vae_4_DwT_L_me.py")
+    parser.add_argument(
+        "--vae_config", type=str, default="occupancy_gen/config/train_vae_4_DwT_L_me.py"
+    )
     parser.add_argument("--ae_ckpt", type=str, default="ckpt/AE_eval/epoch_196.pth")
     parser.add_argument("--lambda_noise_prior", type=float, default=0.05)
     parser.add_argument("--num-sampling-steps", type=int, default=50)  # 1000

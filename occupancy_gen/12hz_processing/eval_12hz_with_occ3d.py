@@ -17,6 +17,7 @@ import torch
 # torch.backends.cuda.matmul.allow_tf32 = True
 # torch.backends.cudnn.allow_tf32 = True
 import torch.distributed as dist
+import model_vae
 from dataload_util import CustomDataset_Tframe_12hz
 from dataset import get_nuScenes_label_name
 from diffusion import create_diffusion
@@ -28,7 +29,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm
-from visualize_nuscene import draw_nusc_occupancy_Bev_Front
+from visualize_nuscenes_occupancy import draw_nusc_occupancy_Bev_Front
 
 # from diffusers.models import AutoencoderKL
 
@@ -134,7 +135,6 @@ def main(args):
         "Tframe": Tframe,
     }
 
-    
     Dit_model = OccDiT(**DiT_cfg).to(device)
 
     ckpt_path = args.ckpt or f"DiT-XL-2-{args.image_size}x{args.image_size}.pt"
@@ -154,7 +154,7 @@ def main(args):
 
     Dit_model = DDP(Dit_model.to(device), device_ids=[rank])
 
-    imageset = "./nuscenes/nuscenes_mmdet3d-12Hz/nuscenes_advanced_12Hz_infos_val.pkl"
+    imageset = "./data/nuscenes_mmdet3d-12Hz/nuscenes_advanced_12Hz_infos_val.pkl"
     occ_base_path = "./dense_voxels_with_semantic/"
     bev_path = "./12hz_bevlayout_200_200"
     gen_occ_save_path = "./gen_occ/200_infer12hz_occ3d"
